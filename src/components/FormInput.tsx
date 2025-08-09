@@ -1,0 +1,38 @@
+import React from 'react';
+
+// Define the types for the component's props
+interface FormInputProps {
+  id: string;
+  label: string;
+  type?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  required?: boolean;
+}
+
+// This component ensures every input has a matching, accessible label.
+export const FormInput: React.FC<FormInputProps> = ({
+  id,
+  label,
+  type = 'text',
+  value,
+  onChange,
+  required = true,
+}) => {
+  return (
+    <div className="mb-4">
+      <label htmlFor={id} className="block mb-1 text-sm font-medium text-brand-dark/80">
+        {label}
+      </label>
+      <input
+        type={type}
+        id={id}
+        name={id}
+        value={value}
+        onChange={onChange}
+        required={required}
+        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"
+      />
+    </div>
+  );
+};

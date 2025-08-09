@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100">
+  <path d="M14.5 14.5h71v71h-71z" fill-opacity="0.02" fill="#FFFFFF"/>
+  <path d="M19.5 19.5h61v61h-61z" fill-opacity="0.02" fill="#FFFFFF"/>
+  <path d="M24.5 24.5h51v51h-51z" fill-opacity="0.02" fill="#FFFFFF"/>
+  <path d="M29.5 29.5h41v41h-41z" fill-opacity="0.02" fill="#FFFFFF"/>
+  <path d="M34.5 34.5h31v31h-31z" fill-opacity="0.02" fill="#FFFFFF"/>
+  <path d="M39.5 39.5h21v21h-21z" fill-opacity="0.02" fill="#FFFFFF"/>
+  <path d="M44.5 44.5h11v11h-11z" fill-opacity="0.02" fill="#FFFFFF"/>
+</svg>```
+
+**B. Define the Background Image in `tailwind.config.js`**
+
+Now, let's tell Tailwind about this new pattern so we can use it as a utility class.
+
+1.  Open `tailwind.config.js`.
+2.  Add a `backgroundImage` key inside `theme.extend`.
+
+```javascript
+// tailwind.config.js
+module.exports = {
+  // ...content
+  theme: {
+    extend: {
+      colors: { /* ...your colors */ },
+      fontFamily: { /* ...your fonts */ },
+      // Add this:
+      backgroundImage: {
+        'mosaic-pattern': "url('/patterns/mosaic.svg')",
+      },
+    },
+  },
+  plugins: [],
+};
