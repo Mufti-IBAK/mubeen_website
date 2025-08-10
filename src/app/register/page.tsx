@@ -1,5 +1,4 @@
 import { RegistrationForm } from '@/components/RegistrationForm';
-import { SimpleRegistrationForm } from '@/components/SimpleRegistrationForm';
 import { Program } from '@/components/ProgramCard';
 import { supabase } from '@/lib/supabaseClient';
 import { Plan } from '@/types';
@@ -10,44 +9,28 @@ interface RegisterPageProps {
 }
 
 export default async function RegisterPage({ searchParams }: RegisterPageProps) {
-  // If no program slug is in the URL, we'll handle that case (e.g., show a program selector or default)
-  const programSlug = searchParams.program;
-
-  // Fetch the program details based on the slug
-  const { data: selectedProgram } = await supabase
-    .from('programs')
-    .select('*')
-    .eq('slug', programSlug)
-    .single<Program>();
+  const programSlug = searchParams.program || 'islamic-foundations-program';
   
-  // Fetch the plans for the 24-month program if it's the one selected
-  let availablePlans: Plan[] = [];
-  if (selectedProgram?.is_flagship) {
-    const { data: plansData } = await supabase
-      .from('plans')
-      .select('*')
-      .eq('program_slug', selectedProgram.slug);
-    availablePlans = plansData ?? [];
-  }
+  const programPromise = supabase.from('programs').select('*').eq('slug', programSlug).single<Program>();
+  const plansPromise = supabase.from('plans').select('*').eq('program_slug', programSlug);
+
+  const [programResult, plansResult] = await Promise.all([programPromise, plansPromise]);
+
+  const selectedProgram = programResult.data;
+  const availablePlans = plansResult.data as Plan[] | null;
+
+  // We are now also fetching ALL programs to pass to the form, in case the user
+  // wants to switch programs (a feature for the simplified forms).
+  const { data: allPrograms } = await supabase.from('programs').select('title, slug');
 
   return (
     <div className="bg-brand-bg py-20">
       <div className="container mx-auto px-6">
-        {/* 
-          This is the core logic:
-          - If the selected program is the flagship, show the detailed form.
-          - Otherwise, show the simple inquiry form.
-        */}
-        {selectedProgram?.is_flagship ? (
-          <RegistrationForm 
-            selectedProgram={selectedProgram}
-            availablePlans={availablePlans} 
-          />
-        ) : (
-          <SimpleRegistrationForm 
-            selectedProgram={selectedProgram}
-          />
-        )}
+        <RegistrationForm 
+          selectedProgram={selectedProgram}
+          availablePlans={availablePlans ?? []}
+          allPrograms={allPrograms ?? []} 
+        />
       </div>
     </div>
   );

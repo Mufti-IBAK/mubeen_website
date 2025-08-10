@@ -31,7 +31,7 @@ export const Header = () => {
         <div className="container mx-auto flex items-center justify-between p-4">
           <Link href="/" className="flex items-center gap-3 group">
             <Image src="/logo.png" alt="Mubeen Academy Logo" width={140} height={35} priority={true} className="h-10 w-auto"/>
-            <span className="text-2xl font-bold text-brand-primary font-heading hidden sm:block">
+            <span className="text-2xl font-bold text-brand-dark font-heading sm:block">
               Mubeen Academy
             </span>
           </Link>
