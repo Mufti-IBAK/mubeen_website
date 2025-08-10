@@ -1,44 +1,39 @@
 import Link from 'next/link';
 import React from 'react';
 
-// SocialIcon component definition remains the same
 const SocialIcon = ({ href, children }: { href: string; children: React.ReactNode }) => (
-  <a href={href} target="_blank" rel="noopener noreferrer" className="transition-colors text-brand-light/70 hover:text-brand-primary">
+  <a href={href} target="_blank" rel="noopener noreferrer" className="text-brand-light/70 hover:text-brand-primary transition-colors">
     {children}
   </a>
 );
 
 export const Footer = () => {
   return (
-    <footer className="py-12 bg-brand-dark bg-mosaic-pattern">
-      <div className="container grid grid-cols-2 gap-8 px-8 mx-auto md:grid-cols-4 md:text-left">
+    <footer className="bg-brand-dark bg-mosaic-pattern py-12">
+      {/* FIX: Added horizontal padding 'px-8' to the main container */}
+      <div className="container mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 px-8 md:text-left">
         
         <div className="col-span-2">
-          {/* Apply heading font */}
           <h3 className="text-xl font-bold text-white font-heading">Mubeen Academy</h3>
-          <p className="max-w-md mt-2 text-brand-light/70">
+          <p className="mt-2 text-brand-light/70 max-w-md">
             Nurturing a community of learners to serve the Ummah with knowledge, character, and action.
           </p>
         </div>
 
         <div>
-          {/* Apply heading font */}
-          <h4 className="font-semibold tracking-wider text-white font-heading">Quick Links</h4>
-          <nav className="flex flex-col mt-4 space-y-2">
-            <Link href="/programs" className="transition-colors text-brand-light/70 hover:text-brand-primary">Programs</Link>
-            <Link href="/about" className="transition-colors text-brand-light/70 hover:text-brand-primary">About Us</Link>
-            <Link href="/register" className="transition-colors text-brand-light/70 hover:text-brand-primary">Register</Link>
+          <h4 className="font-semibold text-white tracking-wider font-heading">Quick Links</h4>
+          <nav className="mt-4 flex flex-col space-y-2">
+            <Link href="/programs" className="text-brand-light/70 hover:text-brand-primary transition-colors">Programs</Link>
+            <Link href="/about" className="text-brand-light/70 hover:text-brand-primary transition-colors">About Us</Link>
+            <Link href="/register" className="text-brand-light/70 hover:text-brand-primary transition-colors">Register</Link>
           </nav>
         </div>
 
-        <div>
-          {/* Apply heading font */}
-          <h4 className="font-semibold tracking-wider text-white font-heading">Connect</h4>
-          <div className="flex flex-col mt-4 space-y-2">
-            {/* FIX #2: Corrected the email address */}
+        <div className="mr-3 pr-4">
+          <h4 className="font-semibold text-white tracking-wider font-heading">Connect</h4>
+          <div className="mt-4 mr-3 pr-4 flex flex-col space-y-2">
             <p className="text-brand-light/70">mubeenacademy001@gmail.com</p>
-            <div className="flex pt-2 space-x-4">
-              {/* FIX #1: The SVGs are now correctly passed as children */}
+            <div className="flex space-x-4 pt-2">
               <SocialIcon href="#">
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd"></path></svg>
               </SocialIcon>
@@ -49,7 +44,7 @@ export const Footer = () => {
           </div>
         </div>
       </div>
-      <div className="pt-8 mt-8 text-center border-t border-brand-light/10 text-brand-light/50">
+      <div className="mt-8 pt-8 border-t border-brand-light/10 text-center text-brand-light/50">
         <p>&copy; {new Date().getFullYear()} Mubeen Academy. All Rights Reserved.</p>
       </div>
     </footer>
