@@ -10,24 +10,28 @@ type Slide = Testimonial | Quote;
 interface TestimonialSliderProps { testimonials: Testimonial[]; quotes: Quote[]; }
 
 export const TestimonialSlider: React.FC<TestimonialSliderProps> = ({ testimonials, quotes }) => {
-  // FIX: Changed delay from 15000 to a more active 7000 (7 seconds)
+  // Hydration-safe: avoid randomizing order during SSR/CSR
   const [emblaRef] = useEmblaCarousel({ loop: true, align: 'center' }, [
     Autoplay({ delay: 7000, stopOnInteraction: true, stopOnMouseEnter: true })
   ]);
 
   const slides: Slide[] = React.useMemo(() => {
-    const combined = [
-        ...testimonials.map(t => ({ ...t, type: 'testimonial' as const })),
-        ...quotes.map(q => ({ ...q, type: 'quote' as const }))
-    ];
-    return combined.sort(() => Math.random() - 0.5);
+    const t = testimonials.map(t => ({ ...t, type: 'testimonial' as const }));
+    const q = quotes.map(q => ({ ...q, type: 'quote' as const }));
+    const out: Slide[] = [];
+    const max = Math.max(t.length, q.length);
+    for (let i = 0; i < max; i++) {
+      if (i < t.length) out.push(t[i]);
+      if (i < q.length) out.push(q[i]);
+    }
+    return out;
   }, [testimonials, quotes]);
 
   if (slides.length === 0) return null;
 
   return (
     <section className="bg-brand-bg py-20">
-      <div className="container mx-auto">
+      <div className="container mx-auto px-6">
         <div className="text-center mb-12">
           <h2 className="text-4xl font-extrabold text-brand-dark font-heading">Words of Wisdom & Praise</h2>
           <p className="mt-4 text-lg text-brand-dark/70">Inspiration from scholars and feedback from our students.</p>

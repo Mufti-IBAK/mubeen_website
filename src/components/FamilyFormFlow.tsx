@@ -1,19 +1,112 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Plan, Program, FamilyMember } from '@/types';
+import { FamilyMember, Plan, Program } from '@/types';
 import { FormInput } from './FormInput';
 import { FormSelect } from './FormSelect';
-import { FormCheckbox } from './FormCheckbox';
 import { supabase } from '@/lib/supabaseClient';
 
+// --- Reusable & Typed Form Components ---
 interface FormTextAreaProps { id: string; name: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; required?: boolean; rows?: number; }
-const FormTextArea: React.FC<FormTextAreaProps> = ({ id, name, label, value, onChange, required = true, rows = 4 }) => ( <div className="mb-4"><label htmlFor={id} className="block text-sm font-medium text-brand-dark/80 mb-1">{label}</label><textarea id={id} name={name} value={value} onChange={onChange} required={required} rows={rows} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"></textarea></div>);
-const ProgressBar = ({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) => { const progress = currentStep > 0 ? ((currentStep - 1) / (totalSteps - 1)) * 100 : 0; return (<div className="w-full bg-gray-200 rounded-full h-2.5 mb-8"><div className="bg-brand-primary h-2.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div></div>); };
+const FormTextArea: React.FC<FormTextAreaProps> = ({ id, name, label, value, onChange, required = true, rows = 4 }) => (
+    <div className="mb-4"><label htmlFor={id} className="block text-sm font-medium text-brand-dark/80 mb-1">{label}</label><textarea id={id} name={name} value={value} onChange={onChange} required={required} rows={rows} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"></textarea></div>
+);
 
-declare const FlutterwaveCheckout: any;
+// Progress bar removed per requirements
 
+interface FamilyMemberOneFormProps {
+  onDataChange: (data: Partial<FamilyMember>) => void;
+  onValidationChange: (isValid: boolean) => void;
+}
+
+export const FamilyMemberOneForm: React.FC<FamilyMemberOneFormProps> = ({ onDataChange, onValidationChange }) => {
+  // This component manages its own internal state for Member 1's data
+  const [memberData, setMemberData] = useState<Partial<FamilyMember>>({
+    fullName: '', gender: '', dateOfBirth: '', guardianName: '', phoneNumber: '', email: '', address: '', communicationMode: '', emergencyContact: '',
+    primaryGoals: '', quranicKnowledgeLevel: '', attendedVirtualClasses: '', personalChallenges: '', supportExpectations: '', hoursPerWeek: '',
+    // Note: Payment and consent fields are not part of the individual member's data
+  });
+
+  const [currentSection, setCurrentSection] = useState(1);
+  const totalSections = 3; // Section 1: Personal, Section 2: Program Details (pre-filled), Section 3: Learning Needs
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    const updatedData = { ...memberData, [name]: value };
+    setMemberData(updatedData);
+    onDataChange(updatedData);
+  };
+  
+  const isSectionValid = useMemo(() => {
+    switch (currentSection) {
+      case 1: return !!(memberData.fullName && memberData.gender && memberData.dateOfBirth && memberData.phoneNumber && memberData.email && memberData.address && memberData.communicationMode && memberData.emergencyContact);
+      case 2: // Section 2 is informational for family plan, no new fields to validate here.
+        return true;
+      case 3: return !!(memberData.primaryGoals && memberData.quranicKnowledgeLevel && memberData.attendedVirtualClasses && memberData.hoursPerWeek && memberData.supportExpectations && memberData.personalChallenges);
+      default: return false;
+    }
+  }, [memberData, currentSection]);
+  
+  useEffect(() => {
+    // This component is "complete" when the user is on the final section and it's valid.
+    const isFormCompleteAndValid = currentSection === totalSections && isSectionValid;
+    onValidationChange(isFormCompleteAndValid);
+  }, [isSectionValid, currentSection, onValidationChange, totalSections]);
+
+  const nextSection = () => setCurrentSection(prev => Math.min(prev + 1, totalSections));
+  const prevSection = () => setCurrentSection(prev => Math.max(prev - 1, 1));
+
+  return (
+    <div className="border border-gray-200 p-6 rounded-lg bg-gray-50">
+      <h4 className="text-xl font-bold text-brand-dark mb-4">Family Member 1: Comprehensive Registration</h4>
+      
+      {currentSection === 1 && (
+          <div>
+              <h5 className="font-semibold text-brand-dark mb-3">Section 1: Personal Information</h5>
+              <FormInput id="fullName" name="fullName" label="Full Name" value={memberData.fullName || ''} onChange={handleChange} />
+              <FormSelect id="gender" name="gender" label="Gender" value={memberData.gender || ''} onChange={handleChange} options={[{value: 'Male', label: 'Male'}, {value: 'Female', label: 'Female'}]} />
+              <FormInput id="dateOfBirth" name="dateOfBirth" label="Date of Birth" type="date" value={memberData.dateOfBirth || ''} onChange={handleChange} />
+              <FormInput id="guardianName" name="guardianName" label="Parent/Guardian Name (if applicable)" value={memberData.guardianName || ''} onChange={handleChange} required={false} />
+              <FormInput id="phoneNumber" name="phoneNumber" label="Phone Number (WhatsApp Preferred)" type="tel" value={memberData.phoneNumber || ''} onChange={handleChange} />
+              <FormInput id="email" name="email" label="Email Address" type="email" value={memberData.email || ''} onChange={handleChange} />
+              <FormTextArea id="address" name="address" label="Residential Address (State & Country)" value={memberData.address || ''} onChange={handleChange} />
+              <FormSelect id="communicationMode" name="communicationMode" label="Preferred Mode of Communication" value={memberData.communicationMode || ''} onChange={handleChange} options={[{value: 'WhatsApp', label: 'WhatsApp'}, {value: 'Email', label: 'Email'}, {value: 'Call', label: 'Call'}]} />
+              <FormInput id="emergencyContact" name="emergencyContact" label="Emergency Contact Person & Number" value={memberData.emergencyContact || ''} onChange={handleChange} />
+          </div>
+      )}
+      {currentSection === 2 && (
+          <div>
+              <h5 className="font-semibold text-brand-dark mb-3">Section 2: Program Details</h5>
+              <p className="text-gray-600">The program details, category, and payment options have been pre-selected based on your family plan choices in the previous step.</p>
+          </div>
+      )}
+      {currentSection === 3 && (
+          <div>
+              <h5 className="font-semibold text-brand-dark mb-3">Section 3: Learning Expectations</h5>
+              <FormTextArea id="primaryGoals" name="primaryGoals" label="Primary goals for joining?" value={memberData.primaryGoals || ''} onChange={handleChange} />
+              <FormSelect id="quranicKnowledgeLevel" name="quranicKnowledgeLevel" label="Current Qur'anic Knowledge Level" value={memberData.quranicKnowledgeLevel || ''} onChange={handleChange} options={[{value: 'Beginner', label: 'Beginner'}, {value: 'Intermediate', label: 'Intermediate'}, {value: 'Advanced', label: 'Advanced'}]} />
+              <FormSelect id="attendedVirtualClasses" name="attendedVirtualClasses" label="Attended virtual classes before?" value={memberData.attendedVirtualClasses || ''} onChange={handleChange} options={[{value: 'Yes', label: 'Yes'}, {value: 'No', label: 'No'}]} />
+              <FormTextArea id="personalChallenges" name="personalChallenges" label="Any personal challenges in learning?" value={memberData.personalChallenges || ''} onChange={handleChange} />
+              <FormTextArea id="supportExpectations" name="supportExpectations" label="Expectations from us for support?" value={memberData.supportExpectations || ''} onChange={handleChange} />
+              <FormInput id="hoursPerWeek" name="hoursPerWeek" label="Hours per week you can dedicate?" type="number" value={memberData.hoursPerWeek || ''} onChange={handleChange} />
+          </div>
+      )}
+
+      <div className="flex justify-end mt-6 pt-4 border-t">
+        <button type="button" onClick={prevSection} className="px-4 py-2 text-sm border border-gray-300 rounded-md font-semibold hover:bg-gray-50 disabled:opacity-50" disabled={currentSection <= 1}>
+            Back Section
+        </button>
+        {currentSection < totalSections && (
+          <button type="button" onClick={nextSection} className="px-4 py-2 text-sm bg-brand-primary text-white rounded-md font-semibold hover:bg-blue-600 disabled:opacity-50 ml-4" disabled={!isSectionValid}>
+            Next Section
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// --- Orchestrator: FamilyFormFlow ---
 interface FamilyFormFlowProps {
   selectedProgram: Program | null;
   familyPlanDetails: Plan;
@@ -21,128 +114,107 @@ interface FamilyFormFlowProps {
 }
 
 export const FamilyFormFlow: React.FC<FamilyFormFlowProps> = ({ selectedProgram, familyPlanDetails, onBack }) => {
+  const [familySize, setFamilySize] = useState<string>('');
+  const [payerFullName, setPayerFullName] = useState('');
+  const [payerEmail, setPayerEmail] = useState('');
+  const [payerPhoneNumber, setPayerPhoneNumber] = useState('');
+
+  const [isMemberOneValid, setIsMemberOneValid] = useState(false);
+
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const totalSteps = 3; // 1: Plan & Payer, 2: Member 1, 3: Review & Submit
 
-  const [payerInfo, setPayerInfo] = useState({ payerFullName: '', payerEmail: '', payerPhoneNumber: '' });
-  const [planSelection, setPlanSelection] = useState({ familySize: '', classType: '', paymentOption: '' });
-  const [members, setMembers] = useState<Partial<FamilyMember>[]>([]);
-  const [consent, setConsent] = useState({ consentToCommunications: false, signature: '' });
-
-  const priceDetails = useMemo(() => {
-    if (planSelection.familySize && planSelection.paymentOption && familyPlanDetails.family_size_options) {
-        const option = familyPlanDetails.family_size_options.find(o => o.size === planSelection.familySize);
-        if (option?.prices) {
-            return (option.prices as any)[planSelection.paymentOption.toLowerCase()];
-        }
-    }
-    return null;
-  }, [planSelection.familySize, planSelection.paymentOption, familyPlanDetails]);
-  
-  useEffect(() => {
-    const sizeStr = planSelection.familySize;
-    const count = sizeStr === 'Family of 2' ? 2 : sizeStr === 'Family of 3' ? 3 : 0;
-    setMembers(Array.from({ length: count }, (_, i) => ({ id: i + 1, fullName: '', gender: '', dateOfBirth: '', primaryGoals: '', quranicKnowledgeLevel: '', virtualClassChallenges: [], personalChallenges: '', supportExpectations: '', hoursPerWeek: '' })));
-  }, [planSelection.familySize]);
-
-  const totalSteps = 2 + members.length + 1;
-
-  const handlePayerChange = (e: React.ChangeEvent<HTMLInputElement>) => setPayerInfo(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  const handlePlanChange = (e: React.ChangeEvent<HTMLSelectElement>) => setPlanSelection(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  const handleMemberChange = (id: number, e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setMembers(prev => prev.map(m => m.id === id ? { ...m, [e.target.name]: e.target.value } : m));
-  };
-  const handleConsentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, type, checked, value } = e.target;
-    setConsent(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
-  };
-
-  const nextStep = () => setCurrentStep(prev => prev + 1);
-  const prevStep = () => setCurrentStep(prev => prev - 1);
+  const nextStep = () => setCurrentStep((s) => Math.min(s + 1, totalSteps));
+  const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 1));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setError(null);
-    const isEnquiry = planSelection.familySize.includes('Full House') || planSelection.classType === 'Private Class';
-
+    setMessage(null);
     try {
-        if (isEnquiry) {
-            const { error: inquiryError } = await supabase.from('program_inquiries').insert({
-                full_name: payerInfo.payerFullName, email: payerInfo.payerEmail, phone_number: payerInfo.payerPhoneNumber,
-                program_title: `${selectedProgram?.title} (${planSelection.familySize} / ${planSelection.classType})`,
-            });
-            if (inquiryError) throw inquiryError;
-            setCurrentStep(99);
-        } else {
-            const { data: familyRecord, error: familyError } = await supabase.from('family_registrations').insert({
-                payer_full_name: payerInfo.payerFullName, payer_email: payerInfo.payerEmail, payer_phone_number: payerInfo.payerPhoneNumber,
-                program_title: selectedProgram?.title, family_size: planSelection.familySize, enrollment_type: planSelection.classType,
-                payment_option: planSelection.paymentOption, amount_paid: priceDetails,
-            }).select().single();
-            if (familyError) throw familyError;
-            const memberRecords = members.map(({ id, ...rest }) => ({ family_registration_id: familyRecord.id, ...rest }));
-            const { error: memberError } = await supabase.from('family_members_detailed').insert(memberRecords);
-            if (memberError) throw memberError;
-            FlutterwaveCheckout({
-                public_key: process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY!, tx_ref: familyRecord.id, amount: priceDetails, currency: "NGN",
-                redirect_url: `/payment-success?ref=${familyRecord.id}`, customer: { email: payerInfo.payerEmail, phone_number: payerInfo.payerPhoneNumber, name: payerInfo.payerFullName },
-                customizations: { title: "Mubeen Academy", description: `Payment for ${selectedProgram?.title} (Family Plan)` },
-            });
-        }
-    } catch (err: any) {
-        setError(err.message || 'An unexpected error occurred.');
+      // For now, treat family registration as a prioritized inquiry for human follow-up.
+      // This keeps the UX consistent and avoids partial data in production.
+      const { error } = await supabase.from('program_inquiries').insert({
+        full_name: payerFullName,
+        email: payerEmail,
+        phone_number: payerPhoneNumber,
+        program_title: `${selectedProgram?.title || 'Selected Program'} (Family Plan - ${familySize || 'N/A'})`,
+      });
+      if (error) throw error;
+      setMessage('Thank you! We received your family plan request. Our team will contact you shortly to finalize details and payment.');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'An error occurred. Please try again.';
+      setMessage(msg);
     } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
-  if (currentStep === 99) { /* ... Success UI ... */ }
+  const sizeOptions = (familyPlanDetails.family_size_options || []).map((o) => ({ value: o.size, label: o.size }));
 
   return (
     <div>
-      <div className="flex justify-between items-center mb-4"><h3 className="text-xl font-semibold text-brand-dark">Family Registration</h3><button onClick={onBack} className="text-sm text-gray-600 hover:text-brand-primary underline">Back to Plan Selection</button></div>
-      <ProgressBar currentStep={currentStep} totalSteps={totalSteps} />
-      <form onSubmit={handleSubmit}>
-          {currentStep === 1 && (
-            <div>
-              <h4 className="text-lg font-bold text-brand-dark mb-4">Step 1: Select Your Plan</h4>
-              <FormSelect id="familySize" name="familySize" label="Number of Family Members" value={planSelection.familySize} onChange={handlePlanChange} options={familyPlanDetails.family_size_options?.map(o => ({ value: o.size, label: o.size })) ?? []} />
-              <FormSelect id="classType" name="classType" label="Enrollment Type" value={planSelection.classType} onChange={handlePlanChange} options={[{ value: 'Group Class', label: 'Group Class'}, { value: 'Private Class', label: 'Private Class'}]} />
-              {priceDetails !== null && (<FormSelect id="paymentOption" name="paymentOption" label="Payment Schedule" value={planSelection.paymentOption} onChange={handlePlanChange} options={[{ value: 'full', label: `Full per Semester: ₦${priceDetails.full.toLocaleString()}`}, { value: 'term', label: `Per Term: ₦${priceDetails.term.toLocaleString()}`}, { value: 'installment', label: `Per Month: ₦${priceDetails.installment.toLocaleString()}`}]} />)}
-              {(planSelection.familySize.includes('Full House') || planSelection.classType === 'Private Class') && (<div className="mt-4 p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-md"><p className="font-semibold">For this selection, please submit your contact details. Our team will reach out to you with a personalized quote.</p></div>)}
-            </div>
-          )}
-          {currentStep === 2 && (
-            <div>
-                <h4 className="text-lg font-bold text-brand-dark mb-4">Step 2: Payer Information</h4>
-                <FormInput id="payerFullName" name="payerFullName" label="Your Full Name" value={payerInfo.payerFullName} onChange={handlePayerChange} />
-                <FormInput id="payerEmail" name="payerEmail" label="Your Email Address" type="email" value={payerInfo.payerEmail} onChange={handlePayerChange} />
-                <FormInput id="payerPhoneNumber" name="payerPhoneNumber" label="Your Phone Number" type="tel" value={payerInfo.payerPhoneNumber} onChange={handlePayerChange} />
-            </div>
-          )}
-          {members.map((member, index) => currentStep === 3 + index && (
-              <div key={member.id}>
-                  <h4 className="text-lg font-bold text-brand-dark mb-4">Student {index + 1}: Details & Needs</h4>
-                  <FormInput id={`fullName-${member.id}`} name="fullName" label="Full Name" value={member.fullName || ''} onChange={(e) => handleMemberChange(member.id!, e)} />
-                  <FormSelect id={`gender-${member.id}`} name="gender" label="Gender" value={member.gender || ''} onChange={(e) => handleMemberChange(member.id!, e)} options={[{value: 'Male', label: 'Male'}, {value: 'Female', label: 'Female'}]} />
-                  <FormTextArea id={`primaryGoals-${member.id}`} name="primaryGoals" label="Primary Goals" value={member.primaryGoals || ''} onChange={(e) => handleMemberChange(member.id!, e)} />
-              </div>
-          ))}
-          {currentStep === 2 + members.length + 1 && (
+      <div className="flex justify-between items-center mb-4">
+        <h3 className="text-xl font-semibold text-brand-dark">Family Registration</h3>
+        <button onClick={onBack} className="text-sm text-gray-600 hover:text-brand-primary underline">Back to Plan Selection</button>
+      </div>
+      <div className="mb-4">
+        <div className="text-sm text-gray-600">Program: <span className="font-semibold">{selectedProgram?.title}</span></div>
+      </div>
+
+      {message ? (
+        <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+          <p className="text-brand-dark/80">{message}</p>
+        </div>
+      ) : (
+        <form onSubmit={handleSubmit}>
+          <div className="mb-6">
+            {currentStep === 1 && (
               <div>
-                  <h4 className="text-lg font-bold text-brand-dark mb-4">Final Step: Consent</h4>
-                  <FormCheckbox id="consentToCommunications" name="consentToCommunications" label="I consent to receiving communications for all registered members." checked={consent.consentToCommunications} onChange={handleConsentChange} />
-                  <FormInput id="signature" name="signature" label="Signature (Payer&apos;s Full Name)" value={consent.signature} onChange={handleConsentChange} />
+                <h4 className="text-lg font-bold text-brand-dark mb-4">Step 1: Select Family Size & Payer Details</h4>
+                <FormSelect id="familySize" name="familySize" label="Family Size" value={familySize} onChange={(e) => setFamilySize(e.target.value)} options={sizeOptions} />
+                <FormInput id="payerFullName" name="payerFullName" label="Payer Full Name" value={payerFullName} onChange={(e) => setPayerFullName(e.target.value)} />
+                <FormInput id="payerEmail" name="payerEmail" label="Payer Email" type="email" value={payerEmail} onChange={(e) => setPayerEmail(e.target.value)} />
+                <FormInput id="payerPhoneNumber" name="payerPhoneNumber" label="Payer Phone Number" type="tel" value={payerPhoneNumber} onChange={(e) => setPayerPhoneNumber(e.target.value)} />
               </div>
-          )}
-          {error && <p className="text-red-500 text-sm text-center my-4">{error}</p>}
-          <div className="flex justify-between mt-8">
-              <button type="button" onClick={prevStep} className={`...`} disabled={currentStep <= 1}>Back</button>
-              <button type="submit" className={`...`} disabled={isSubmitting}>{isSubmitting ? 'Processing...' : (currentStep === totalSteps ? 'Proceed to Payment' : 'Next')}</button>
+            )}
+
+            {currentStep === 2 && (
+              <div>
+                <h4 className="text-lg font-bold text-brand-dark mb-4">Step 2: Family Member 1 Details</h4>
+                <FamilyMemberOneForm onDataChange={() => { /* collected upstream if needed */ }} onValidationChange={setIsMemberOneValid} />
+              </div>
+            )}
+
+            {currentStep === 3 && (
+              <div>
+                <h4 className="text-lg font-bold text-brand-dark mb-4">Step 3: Review & Submit</h4>
+                <p className="text-sm text-brand-dark/70 mb-4">We will reach out to you to complete the family registration and payment based on the details below.</p>
+                <div className="bg-gray-50 border rounded-lg p-4 text-sm space-y-2">
+                  <div><span className="font-semibold">Program:</span> {selectedProgram?.title}</div>
+                  <div><span className="font-semibold">Family Size:</span> {familySize || '—'}</div>
+                  <div><span className="font-semibold">Payer:</span> {payerFullName} • {payerEmail} • {payerPhoneNumber}</div>
+                </div>
+              </div>
+            )}
           </div>
-      </form>
+
+          <div className="flex justify-between mt-6">
+            <button type="button" onClick={prevStep} className={`px-6 py-2 border border-gray-300 rounded-md font-semibold transition-colors ${currentStep <= 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`} disabled={currentStep <= 1}>Back</button>
+            {currentStep < totalSteps ? (
+              <button type="button" onClick={nextStep} className={`px-6 py-2 bg-brand-primary text-white rounded-md font-semibold transition-colors ${currentStep === 1 ? (!familySize || !payerFullName || !payerEmail || !payerPhoneNumber ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600') : (!isMemberOneValid ? 'opacity-50 cursor-not-allowed' : 'hover:bg-blue-600')}`} disabled={currentStep === 1 ? (!familySize || !payerFullName || !payerEmail || !payerPhoneNumber) : (!isMemberOneValid)}>
+                Next
+              </button>
+            ) : (
+              <button type="submit" className={`px-6 py-2 bg-green-600 text-white rounded-md font-semibold transition-colors ${isSubmitting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-green-700'}`} disabled={isSubmitting}>
+                {isSubmitting ? 'Submitting...' : 'Submit Request'}
+              </button>
+            )}
+          </div>
+        </form>
+      )}
     </div>
   );
 };

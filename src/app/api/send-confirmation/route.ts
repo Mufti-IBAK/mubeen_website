@@ -3,20 +3,25 @@ import { Resend } from 'resend';
 
 // Initialize Resend with your API key from environment variables
 const resend = new Resend(process.env.RESEND_API_KEY);
+const EMAIL_FROM = process.env.EMAIL_FROM || 'Mubeen Academy <no-reply@example.com>'; // configure in env
 
 export async function POST(req: NextRequest) {
   try {
-    // Extract the registration data from the request body
     const body = await req.json();
     const { name, email, program, category, enrollmentType } = body;
 
     if (!name || !email || !program) {
-      return new NextResponse('Missing required fields', { status: 400 });
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Send the email using Resend
+    const apiKeyMissing = !process.env.RESEND_API_KEY;
+    if (apiKeyMissing) {
+      console.warn('RESEND_API_KEY not configured; skipping email send');
+      return NextResponse.json({ ok: true, skipped: true });
+    }
+
     const { data, error } = await resend.emails.send({
-      from: 'Mubeen Academy <no-reply@yourverifieddomain.com>', // IMPORTANT: Replace with your verified domain
+      from: EMAIL_FROM, // Set in env to a verified domain
       to: [email],
       subject: 'Your Registration for Mubeen Academy is Confirmed!',
       html: `
@@ -27,8 +32,8 @@ export async function POST(req: NextRequest) {
           <ul>
             <li><strong>Name:</strong> ${name}</li>
             <li><strong>Program:</strong> ${program}</li>
-            <li><strong>Category:</strong> ${category}</li>
-            <li><strong>Enrollment Type:</strong> ${enrollmentType}</li>
+            ${category ? `<li><strong>Category:</strong> ${category}</li>` : ''}
+            ${enrollmentType ? `<li><strong>Enrollment Type:</strong> ${enrollmentType}</li>` : ''}
           </ul>
           <p>Please proceed with the payment to secure your spot. A member of our team will be in touch with you within <strong>24 hours</strong> to confirm the next steps.</p>
           <p>If you have any questions, please do not hesitate to contact our support team by replying to this email or sending a message to <a href="mailto:mubeenacademy001@gmail.com">mubeenacademy001@gmail.com</a>.</p>
@@ -38,14 +43,13 @@ export async function POST(req: NextRequest) {
     });
 
     if (error) {
-      console.error("Resend error:", error);
-      return new NextResponse('Error sending email', { status: 500 });
+      console.error('Resend error:', error);
+      return NextResponse.json({ error: 'Error sending email' }, { status: 200 }); // Do not fail the flow
     }
 
-    return NextResponse.json({ message: 'Email sent successfully!', data });
-
+    return NextResponse.json({ ok: true, data });
   } catch (error) {
-    console.error("API Error:", error);
-    return new NextResponse('Internal Server Error', { status: 500 });
+    console.error('API Error:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 200 }); // Do not block the flow
   }
 }

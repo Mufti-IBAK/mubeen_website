@@ -1,91 +1,96 @@
 'use client';
 
 import React from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useGSAP } from '@gsap/react';
 import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { localAssets } from '@/lib/imageData';
-
-gsap.registerPlugin(ScrollTrigger);
+import { supabase } from '@/lib/supabaseClient';
 
 export const HeroSection = () => {
-  const container = React.useRef(null);
-  const headlines = [
-    "Nurturing a community of learners to serve the Ummah",
-    "To be a leading institution for authentic Islamic education",
-    "Fostering character, knowledge, and action",
-    "Your journey to authentic knowledge begins here"
-  ];
-  const headlineRefs = React.useRef<(HTMLHeadingElement | null)[]>([]);
-  const intervalRef = React.useRef<NodeJS.Timeout | null>(null);
+  const container = React.useRef<HTMLDivElement | null>(null);
+  const titleRef = React.useRef<HTMLHeadingElement | null>(null);
+  const subtitleRef = React.useRef<HTMLParagraphElement | null>(null);
+  const ctasRef = React.useRef<HTMLDivElement | null>(null);
+
+  const [isAuthed, setIsAuthed] = React.useState(false);
+  const [isAdmin, setIsAdmin] = React.useState(false);
+
+  React.useEffect(() => {
+    const loadProfile = async (userId: string) => {
+      const { data } = await supabase.from('profiles').select('role').eq('id', userId).single();
+      setIsAdmin((data as { role?: string } | null)?.role === 'admin');
+    };
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      const session = data.session;
+      setIsAuthed(!!session);
+      if (session?.user?.id) await loadProfile(session.user.id);
+      else setIsAdmin(false);
+    };
+    init();
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
+      setIsAuthed(!!session);
+      if (session?.user?.id) await loadProfile(session.user.id);
+      else setIsAdmin(false);
+    });
+    return () => {
+      sub.subscription?.unsubscribe?.();
+    };
+  }, []);
 
   useGSAP(() => {
-    const headlinesArray = headlineRefs.current.filter(el => el !== null) as HTMLElement[];
-    if (headlinesArray.length < 2) return;
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } });
+    tl.fromTo(titleRef.current, { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: 0.7 })
+      .fromTo(subtitleRef.current, { y: 20, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, '-=0.3')
+      .fromTo(ctasRef.current, { y: 10, opacity: 0 }, { y: 0, opacity: 1, duration: 0.6 }, '-=0.3');
 
-    let currentIndex = 0;
+    // Floating accents
+    gsap.to('.hero-float', { y: 12, repeat: -1, yoyo: true, duration: 2.8, ease: 'sine.inOut', stagger: 0.2 });
 
-    // Set initial state for all headlines: make all invisible except the first.
-    gsap.set(headlinesArray, { autoAlpha: 0 });
-    gsap.set(headlinesArray[0], { autoAlpha: 1 });
-    
-    const firstHeadlineWords = headlinesArray[0].querySelectorAll('.split-word');
-    gsap.from(firstHeadlineWords, { yPercent: 100, stagger: 0.08, duration: 1, ease: 'power3.out', delay: 0.5 });
-    
-    const rotateHeadlines = () => {
-      const currentHeadline = headlinesArray[currentIndex];
-      const nextIndex = (currentIndex + 1) % headlinesArray.length;
-      const nextHeadline = headlinesArray[nextIndex];
-
-      const currentWords = currentHeadline.querySelectorAll('.split-word');
-      const nextWords = nextHeadline.querySelectorAll('.split-word');
-      
-      const tl = gsap.timeline();
-      tl.to(currentWords, { yPercent: -100, stagger: 0.05, duration: 0.5, ease: 'power3.in' })
-        .set(currentHeadline, { autoAlpha: 0 }) // Explicitly hide the old headline
-        .set(nextHeadline, { autoAlpha: 1 }) // Explicitly show the new headline
-        // FIX: Reset the state of the words before animating them in.
-        .fromTo(nextWords, { yPercent: 100 }, { yPercent: 0, stagger: 0.05, duration: 0.5, ease: 'power3.out' });
-
-      currentIndex = nextIndex;
-    };
-
-    intervalRef.current = setInterval(rotateHeadlines, 5000); // Changed to 5 seconds as requested
-
-    gsap.to('.hero-bg-image', {
-      y: '20%', ease: 'none',
-      scrollTrigger: { trigger: container.current, start: 'top top', end: 'bottom top', scrub: true },
-    });
-
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+    // Animate gradient center points without obscuring content
+    const bg = container.current?.querySelector('.hero-animated-bg') as HTMLElement | null;
+    if (bg) {
+      gsap.set(bg, { ['--r1x' as any]: '10%', ['--r1y' as any]: '10%', ['--r2x' as any]: '90%', ['--r2y' as any]: '20%' });
+      gsap.timeline({ repeat: -1, yoyo: true, defaults: { ease: 'sine.inOut' } })
+        .to(bg, { duration: 10, ['--r1x' as any]: '20%', ['--r1y' as any]: '15%', ['--r2x' as any]: '80%', ['--r2y' as any]: '25%' })
+        .to(bg, { duration: 10, ['--r1x' as any]: '12%', ['--r1y' as any]: '8%', ['--r2x' as any]: '85%', ['--r2y' as any]: '18%' });
     }
   }, { scope: container });
 
   return (
-    <section ref={container} className="relative isolate flex items-center justify-center h-[90vh] text-white overflow-hidden">
-        <div className="absolute inset-0 -z-10">
-            <Image src={localAssets.heroBackground.src} alt={localAssets.heroBackground.alt} fill priority className="object-cover hero-bg-image" />
-            <div className="absolute inset-0 bg-brand-primary/30" />
-        </div>
-      <div className="container mx-auto px-6 text-center py-12">
-        <div className="relative h-48 md:h-64">
-            {headlines.map((text, index) => (
-                <h1 key={index} ref={el => { headlineRefs.current[index] = el; }} className="absolute inset-0 text-5xl md:text-6xl lg:text-7xl font-black font-heading leading-tight [text-shadow:_0_2px_4px_rgb(0_0_0_/_40%)]">
-                {text.split(" ").map((word, i) => (
-                    <span key={i} className="inline-block overflow-hidden pb-2 align-bottom">
-                        <span className="inline-block mr-3 split-word">{word}</span>
-                    </span>
-                ))}
-                </h1>
-            ))}
-        </div>
-        <p className="pt-10 mt-10 md:pt-0 md:mt-6 text-xl md:text-2xl text-white/80 max-w-3xl mx-auto font-semibold [text-shadow:_0_2px_3px_rgb(0_0_0_/_30%)] ">Through knowledge (&apos;Ilm), character (Adab), and action (&apos;Amal).</p>
-        <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/programs" passHref><button className="w-full sm:w-auto rounded-md bg-white px-8 py-3 text-lg font-semibold text-brand-dark transition-transform duration-300 ease-in-out hover:scale-105">Explore Programs</button></Link>
-            <Link href="/register" passHref><button className="w-full sm:w-auto rounded-md border border-white/50 bg-white/10 px-8 py-3 text-lg font-semibold text-white transition-all duration-300 ease-in-out hover:bg-white/20 hover:border-white">Register Now</button></Link>
+    <section ref={container} className="relative isolate min-h-[75vh] w-full overflow-hidden">
+      {/* Layered gradient background (animated) */}
+      <div className="hero-animated-bg absolute inset-0 -z-10" />
+      {/* Soft overlay to keep content/CTA readable */}
+      <div className="absolute inset-0 -z-10 bg-[hsl(var(--background))]/85 dark:bg-black/60" />
+
+      {/* Floating accent shapes */}
+      <div className="hero-float absolute -left-10 top-24 h-40 w-40 rounded-full bg-[hsl(var(--primary))]/20 blur-2xl" />
+      <div className="hero-float absolute right-0 top-40 h-36 w-36 rounded-full bg-[hsl(var(--accent))]/20 blur-2xl" />
+      <div className="hero-float absolute left-1/3 bottom-10 h-24 w-24 rounded-full bg-[hsl(var(--primary))]/15 blur-2xl" />
+
+      <div className="w-full text-center py-16 md:py-20">
+        <h1 ref={titleRef} className="text-5xl md:text-6xl lg:text-7xl font-black leading-tight">
+          <span className="bg-gradient-to-r from-[hsl(var(--foreground))] to-[hsl(var(--primary))] bg-clip-text text-transparent">
+            Learn. Grow. Serve.
+          </span>
+        </h1>
+        <p ref={subtitleRef} className="mt-5 text-lg md:text-2xl text-[hsl(var(--muted-foreground))] max-w-3xl mx-auto">
+          Authentic Islamic education with a modern experience — empowering students with knowledge, character, and action.
+        </p>
+        <div ref={ctasRef} className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+          <Link href="/programs" className="btn-primary px-8 py-3 text-base">
+            Explore Programs
+          </Link>
+          {isAuthed ? (
+            isAdmin ? (
+              <Link href="/admin" className="btn-outline px-8 py-3 text-base">Admin</Link>
+            ) : (
+              <Link href="/dashboard" className="btn-outline px-8 py-3 text-base">My Dashboard</Link>
+            )
+          ) : (
+            <Link href="/login?mode=signup" className="btn-outline px-8 py-3 text-base">Create Account</Link>
+          )}
         </div>
       </div>
     </section>

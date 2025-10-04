@@ -9,30 +9,34 @@ const SocialIcon = ({ href, children }: { href: string; children: React.ReactNod
 
 export const Footer = () => {
   return (
-    <footer className="bg-brand-dark bg-mosaic-pattern py-12">
-      {/* FIX: Added horizontal padding 'px-8' to the main container */}
-      <div className="container mx-auto grid grid-cols-2 md:grid-cols-4 gap-8 px-8 md:text-left">
-        
-        <div className="col-span-2">
-          <h3 className="text-xl font-bold text-white font-heading">Mubeen Academy</h3>
-          <p className="mt-2 text-brand-light/70 max-w-md">
-            Nurturing a community of learners to serve the Ummah with knowledge, character, and action.
+    <footer className="bg-[hsl(var(--card))] border-t border-[hsl(var(--border))]">
+      <div className="container-page py-12 grid grid-cols-1 md:grid-cols-4 gap-10">
+        <div>
+          <h3 className="text-2xl font-bold">Mubeen Academy</h3>
+          <p className="mt-3 text-[hsl(var(--muted-foreground))] max-w-sm">
+            Nurturing a community of learners with knowledge, character, and action.
           </p>
         </div>
-
         <div>
-          <h4 className="font-semibold text-white tracking-wider font-heading">Quick Links</h4>
+          <h4 className="font-semibold tracking-wider">Explore</h4>
           <nav className="mt-4 flex flex-col space-y-2">
-            <Link href="/programs" className="text-brand-light/70 hover:text-brand-primary transition-colors">Programs</Link>
-            <Link href="/about" className="text-brand-light/70 hover:text-brand-primary transition-colors">About Us</Link>
-            <Link href="/register" className="text-brand-light/70 hover:text-brand-primary transition-colors">Register</Link>
+            <Link href="/programs" className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">All Programs</Link>
+            <Link href="/resources" className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">Resource Library</Link>
+            <Link href="/about" className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">About Us</Link>
           </nav>
         </div>
-
-        <div className="mr-3 pr-4">
-          <h4 className="font-semibold text-white tracking-wider font-heading">Connect</h4>
-          <div className="mt-4 mr-3 pr-4 flex flex-col space-y-2">
-            <p className="text-brand-light/70">mubeenacademy001@gmail.com</p>
+        <div>
+          <h4 className="font-semibold tracking-wider">Account</h4>
+          <nav className="mt-4 flex flex-col space-y-2">
+            <Link href="/login" className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">Sign in</Link>
+            <Link href="/login?mode=signup" className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">Create account</Link>
+            <Link href="/dashboard" className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">Dashboard</Link>
+          </nav>
+        </div>
+        <div>
+          <h4 className="font-semibold tracking-wider">Contact</h4>
+          <div className="mt-4 flex flex-col space-y-2">
+            <a href="mailto:mubeenacademy001@gmail.com" className="text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">mubeenacademy001@gmail.com</a>
             <div className="flex space-x-4 pt-2">
               <SocialIcon href="#">
                 <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fillRule="evenodd" d="M22 12c0-5.523-4.477-10-10-10S2 6.477 2 12c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V12h2.54V9.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V12h2.773l-.443 2.89h-2.33v6.988C18.343 21.128 22 16.991 22 12z" clipRule="evenodd"></path></svg>
@@ -44,8 +48,8 @@ export const Footer = () => {
           </div>
         </div>
       </div>
-      <div className="mt-8 pt-8 border-t border-brand-light/10 text-center text-brand-light/50">
-        <p>&copy; {new Date().getFullYear()} Mubeen Academy. All Rights Reserved.</p>
+      <div className="border-t border-[hsl(var(--border))] text-center text-[hsl(var(--muted-foreground))] py-6">
+        <p>&copy; {new Date().getFullYear()} Mubeen Academy. All rights reserved.</p>
       </div>
     </footer>
   );

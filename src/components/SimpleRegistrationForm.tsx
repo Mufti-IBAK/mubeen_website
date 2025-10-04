@@ -58,9 +58,9 @@ export const SimpleRegistrationForm: React.FC<SimpleRegistrationFormProps> = ({ 
       </h2>
       <p className="text-center text-gray-600 mb-6">Provide your details, and our team will contact you to finalize enrollment.</p>
       <form onSubmit={handleSubmit}>
-        <FormInput id="fullName" label="Full Name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
-        <FormInput id="email" label="Email Address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <FormInput id="phoneNumber" label="Phone Number" type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} required />
+        <FormInput id="fullName" name="fullName" label="Full Name" value={fullName} onChange={(e) => setFullName(e.target.value)} required />
+        <FormInput id="email" name="email" label="Email Address" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
+        <FormInput id="phoneNumber" name="phoneNumber" label="Phone Number" type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} required />
         <div className="mt-6">
           <button type="submit" disabled={isSubmitting} className="w-full bg-brand-primary text-white font-semibold py-3 rounded-md hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             {isSubmitting ? 'Submitting...' : 'Submit Inquiry'}

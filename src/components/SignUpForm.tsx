@@ -104,6 +104,7 @@ export const SignUpForm = () => {
         {/* FIX: Added the new Checkbox for newsletter subscription */}
         <FormCheckbox
             id="subscribe"
+            name="subscribe"
             label="Yes, I want to receive news and updates via email."
             checked={subscribe}
             onChange={(e) => setSubscribe(e.target.checked)}

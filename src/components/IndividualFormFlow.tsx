@@ -9,19 +9,12 @@ import { FormCheckbox } from './FormCheckbox';
 import { supabase } from '@/lib/supabaseClient';
 
 // --- Reusable & Typed Form Components ---
-interface FormTextAreaProps { id: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; required?: boolean; rows?: number; }
-const FormTextArea: React.FC<FormTextAreaProps> = ({ id, label, value, onChange, required = true, rows = 4 }) => (
-    <div className="mb-4"><label htmlFor={id} className="block text-sm font-medium text-brand-dark/80 mb-1">{label}</label><textarea id={id} name={id} value={value} onChange={onChange} required={required} rows={rows} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"></textarea></div>
+interface FormTextAreaProps { id: string; name: string; label: string; value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; required?: boolean; rows?: number; }
+const FormTextArea: React.FC<FormTextAreaProps> = ({ id, name, label, value, onChange, required = true, rows = 4 }) => (
+    <div className="mb-4"><label htmlFor={id} className="block text-sm font-medium text-brand-dark/80 mb-1">{label}</label><textarea id={id} name={name} value={value} onChange={onChange} required={required} rows={rows} className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-brand-primary"></textarea></div>
 );
 
-const ProgressBar = ({ currentStep, totalSteps }: { currentStep: number; totalSteps: number }) => {
-    const progress = currentStep > 0 ? ((currentStep - 1) / (totalSteps - 1)) * 100 : 0;
-    return (
-        <div className="w-full bg-gray-200 rounded-full h-2.5 mb-8">
-            <div className="bg-brand-primary h-2.5 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
-        </div>
-    );
-};
+// Progress bar removed per requirements
 
 declare const FlutterwaveCheckout: any;
 
@@ -31,10 +24,9 @@ interface IndividualFormFlowProps {
 }
 
 export const IndividualFormFlow: React.FC<IndividualFormFlowProps> = ({ selectedProgram, onBack }) => {
-  // FIX: Added the missing 'familySize' property to the initial state to match the type.
   const [formData, setFormData] = useState<RegistrationFormData>({
     enrollmentType: 'individual',
-    familySize: '', // This was the missing property
+    familySize: '',
     fullName: '', gender: '', dateOfBirth: '', guardianName: '', phoneNumber: '', email: '', address: '', communicationMode: '', emergencyContact: '',
     category: '', classType: '', paymentOption: '', paymentMethod: '', paymentMethodOther: '', paymentAssistance: '',
     primaryGoals: '', quranicKnowledgeLevel: '', attendedVirtualClasses: '', virtualClassChallenges: [], virtualClassChallengesOther: '', personalChallenges: '', supportExpectations: '', hoursPerWeek: '', sessionPreference: '', extraMentorshipInterest: '',
@@ -95,14 +87,13 @@ export const IndividualFormFlow: React.FC<IndividualFormFlowProps> = ({ selected
       }).select().single();
       if (supabaseError) throw supabaseError;
       if (!data) throw new Error("Failed to create registration record.");
-      // FIX: Explicitly type the response from the external SDK as 'any'
       FlutterwaveCheckout({
         public_key: process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY!, tx_ref: data.id, amount: paymentAmount, currency: "NGN",
         redirect_url: `/payment-success?ref=${data.id}`, customer: { email: formData.email, phone_number: formData.phoneNumber, name: formData.fullName },
         customizations: { title: "Mubeen Academy", description: `Payment for ${selectedProgram?.title}`, logo: "https://www.your-deployed-site.com/logo.png" },
         onclose: () => { setIsSubmitting(false); }
       });
-    } catch (err: any) { // FIX: Explicitly type the caught error as 'any'
+    } catch (err: any) {
       setError(err.message || "An unexpected error occurred.");
       setIsSubmitting(false);
     }
@@ -116,53 +107,52 @@ export const IndividualFormFlow: React.FC<IndividualFormFlowProps> = ({ selected
                 Back to Plan Selection
             </button>
         </div>
-        <ProgressBar currentStep={currentStep} totalSteps={totalSteps + 1} />
         <form onSubmit={handleSubmit}>
             {currentStep === 1 && (
                 <div>
                     <h4 className="text-lg font-bold text-brand-dark mb-4">Section 1: Personal Information</h4>
-                    <FormInput id="fullName" label="Full Name" value={formData.fullName} onChange={handleChange} />
-                    <FormSelect id="gender" label="Gender" value={formData.gender} onChange={handleChange} options={[{value: 'Male', label: 'Male'}, {value: 'Female', label: 'Female'}]} />
-                    <FormInput id="dateOfBirth" label="Date of Birth" type="date" value={formData.dateOfBirth} onChange={handleChange} />
-                    <FormInput id="guardianName" label="Parent/Guardian Name (if applicable)" value={formData.guardianName} onChange={handleChange} required={false} />
-                    <FormInput id="phoneNumber" label="Phone Number (WhatsApp Preferred)" type="tel" value={formData.phoneNumber} onChange={handleChange} />
-                    <FormInput id="email" label="Email Address" type="email" value={formData.email} onChange={handleChange} />
-                    <FormTextArea id="address" label="Residential Address (State & Country)" value={formData.address} onChange={handleChange} />
-                    <FormSelect id="communicationMode" label="Preferred Mode of Communication" value={formData.communicationMode} onChange={handleChange} options={[{value: 'WhatsApp', label: 'WhatsApp'}, {value: 'Email', label: 'Email'}, {value: 'Call', label: 'Call'}]} />
-                    <FormInput id="emergencyContact" label="Emergency Contact Person & Number" value={formData.emergencyContact} onChange={handleChange} />
+                    <FormInput id="fullName" name="fullName" label="Full Name" value={formData.fullName} onChange={handleChange} />
+                    <FormSelect id="gender" name="gender" label="Gender" value={formData.gender} onChange={handleChange} options={[{value: 'Male', label: 'Male'}, {value: 'Female', label: 'Female'}]} />
+                    <FormInput id="dateOfBirth" name="dateOfBirth" label="Date of Birth" type="date" value={formData.dateOfBirth} onChange={handleChange} />
+                    <FormInput id="guardianName" name="guardianName" label="Parent/Guardian Name (if applicable)" value={formData.guardianName} onChange={handleChange} required={false} />
+                    <FormInput id="phoneNumber" name="phoneNumber" label="Phone Number (WhatsApp Preferred)" type="tel" value={formData.phoneNumber} onChange={handleChange} />
+                    <FormInput id="email" name="email" label="Email Address" type="email" value={formData.email} onChange={handleChange} />
+                    <FormTextArea id="address" name="address" label="Residential Address (State & Country)" value={formData.address} onChange={handleChange} />
+                    <FormSelect id="communicationMode" name="communicationMode" label="Preferred Mode of Communication" value={formData.communicationMode} onChange={handleChange} options={[{value: 'WhatsApp', label: 'WhatsApp'}, {value: 'Email', label: 'Email'}, {value: 'Call', label: 'Call'}]} />
+                    <FormInput id="emergencyContact" name="emergencyContact" label="Emergency Contact Person & Number" value={formData.emergencyContact} onChange={handleChange} />
                 </div>
             )}
             {currentStep === 2 && ( 
                 <div>
                     <h4 className="text-lg font-bold text-brand-dark mb-4">Section 2: Program & Payment Details</h4>
-                    <FormSelect id="category" label="Category" value={formData.category} onChange={handleChange} options={[{value: 'Junior (1-3 Terms)', label: 'Junior (1-3 Terms)'}, {value: 'Senior (4-6 Terms)', label: 'Senior (4-6 Terms)'}]} />
-                    <FormSelect id="classType" label="Enrollment Type" value={formData.classType} onChange={handleChange} options={[{value: 'Group Class', label: 'Group Class'}, {value: 'Private Class', label: 'Private Class'}]} />
-                    <FormSelect id="paymentOption" label="Payment Option" value={formData.paymentOption} onChange={handleChange} options={[{value: 'Full Subscription (₦20,000)', label: 'Full Subscription (₦20,000)'}, {value: 'Installments', label: 'Installments (₦3,000)'}]} />
-                    <FormSelect id="paymentMethod" label="Preferred Payment Method" value={formData.paymentMethod} onChange={handleChange} options={[{value: 'Bank Transfer', label: 'Bank Transfer'}, {value: 'Mobile Transfer', label: 'Mobile Transfer'}, {value: 'USSD', label: 'USSD'}, {value: 'Others', label: 'Others'}]} />
-                    {formData.paymentMethod === 'Others' && <FormInput id="paymentMethodOther" label="If “Others”, specify payment method" value={formData.paymentMethodOther} onChange={handleChange} />}
-                    <FormSelect id="paymentAssistance" label="Do you need assistance with setting up payments?" value={formData.paymentAssistance} onChange={handleChange} options={[{value: 'Yes', label: 'Yes'}, {value: 'No', label: 'No'}]} />
+                    <FormSelect id="category" name="category" label="Category" value={formData.category} onChange={handleChange} options={[{value: 'Junior (1-3 Terms)', label: 'Junior (1-3 Terms)'}, {value: 'Senior (4-6 Terms)', label: 'Senior (4-6 Terms)'}]} />
+                    <FormSelect id="classType" name="classType" label="Enrollment Type" value={formData.classType} onChange={handleChange} options={[{value: 'Group Class', label: 'Group Class'}, {value: 'Private Class', label: 'Private Class'}]} />
+                    <FormSelect id="paymentOption" name="paymentOption" label="Payment Option" value={formData.paymentOption} onChange={handleChange} options={[{value: 'Full Subscription (₦20,000)', label: 'Full Subscription (₦20,000)'}, {value: 'Installments', label: 'Installments (₦3,000)'}]} />
+                    <FormSelect id="paymentMethod" name="paymentMethod" label="Preferred Payment Method" value={formData.paymentMethod} onChange={handleChange} options={[{value: 'Bank Transfer', label: 'Bank Transfer'}, {value: 'Mobile Transfer', label: 'Mobile Transfer'}, {value: 'USSD', label: 'USSD'}, {value: 'Others', label: 'Others'}]} />
+                    {formData.paymentMethod === 'Others' && <FormInput id="paymentMethodOther" name="paymentMethodOther" label="If “Others”, specify payment method" value={formData.paymentMethodOther} onChange={handleChange} />}
+                    <FormSelect id="paymentAssistance" name="paymentAssistance" label="Do you need assistance with setting up payments?" value={formData.paymentAssistance} onChange={handleChange} options={[{value: 'Yes', label: 'Yes'}, {value: 'No', label: 'No'}]} />
                 </div>
             )}
             {currentStep === 3 && ( 
                 <div>
                     <h4 className="text-lg font-bold text-brand-dark mb-4">Section 3: Learning Expectations</h4>
-                    <FormTextArea id="primaryGoals" label="What are your primary goals for joining this program?" value={formData.primaryGoals} onChange={handleChange} />
-                    <FormSelect id="quranicKnowledgeLevel" label="What is your current Qur'anic knowledge level?" value={formData.quranicKnowledgeLevel} onChange={handleChange} options={[{value: 'Beginner', label: 'Beginner'}, {value: 'Intermediate', label: 'Intermediate'}, {value: 'Advanced', label: 'Advanced'}]} />
-                    <FormSelect id="attendedVirtualClasses" label="Have you ever attended virtual Islamic classes before?" value={formData.attendedVirtualClasses} onChange={handleChange} options={[{value: 'Yes', label: 'Yes'}, {value: 'No', label: 'No'}]} />
-                    <FormTextArea id="personalChallenges" label="Do you face any personal challenges in learning?" value={formData.personalChallenges} onChange={handleChange} />
-                    <FormTextArea id="supportExpectations" label="What are your expectations from us regarding support?" value={formData.supportExpectations} onChange={handleChange} />
-                    <FormInput id="hoursPerWeek" label="How many hours per week can you dedicate?" type="number" value={formData.hoursPerWeek} onChange={handleChange} />
-                    <FormSelect id="sessionPreference" label="Do you prefer live sessions, recorded, or both?" value={formData.sessionPreference} onChange={handleChange} options={[{value: 'Live', label: 'Live'}, {value: 'Recorded', label: 'Recorded'}, {value: 'Both', label: 'Both'}]} />
-                    <FormSelect id="extraMentorshipInterest" label="Interested in extra mentorship or study groups?" value={formData.extraMentorshipInterest} onChange={handleChange} options={[{value: 'Yes', label: 'Yes'}, {value: 'No', label: 'No'}]} />
+                    <FormTextArea id="primaryGoals" name="primaryGoals" label="What are your primary goals for joining this program?" value={formData.primaryGoals} onChange={handleChange} />
+                    <FormSelect id="quranicKnowledgeLevel" name="quranicKnowledgeLevel" label="What is your current Qur'anic knowledge level?" value={formData.quranicKnowledgeLevel} onChange={handleChange} options={[{value: 'Beginner', label: 'Beginner'}, {value: 'Intermediate', label: 'Intermediate'}, {value: 'Advanced', label: 'Advanced'}]} />
+                    <FormSelect id="attendedVirtualClasses" name="attendedVirtualClasses" label="Have you ever attended virtual Islamic classes before?" value={formData.attendedVirtualClasses} onChange={handleChange} options={[{value: 'Yes', label: 'Yes'}, {value: 'No', label: 'No'}]} />
+                    <FormTextArea id="personalChallenges" name="personalChallenges" label="Do you face any personal challenges in learning?" value={formData.personalChallenges} onChange={handleChange} />
+                    <FormTextArea id="supportExpectations" name="supportExpectations" label="What are your expectations from us regarding support?" value={formData.supportExpectations} onChange={handleChange} />
+                    <FormInput id="hoursPerWeek" name="hoursPerWeek" label="How many hours per week can you dedicate?" type="number" value={formData.hoursPerWeek} onChange={handleChange} />
+                    <FormSelect id="sessionPreference" name="sessionPreference" label="Do you prefer live sessions, recorded, or both?" value={formData.sessionPreference} onChange={handleChange} options={[{value: 'Live', label: 'Live'}, {value: 'Recorded', label: 'Recorded'}, {value: 'Both', label: 'Both'}]} />
+                    <FormSelect id="extraMentorshipInterest" name="extraMentorshipInterest" label="Interested in extra mentorship or study groups?" value={formData.extraMentorshipInterest} onChange={handleChange} options={[{value: 'Yes', label: 'Yes'}, {value: 'No', label: 'No'}]} />
                 </div>
             )}
             {currentStep === 4 && ( 
                 <div>
                     <h4 className="text-lg font-bold text-brand-dark mb-4">Section 4: Consent & Declarations</h4>
-                    <FormCheckbox id="commitToDuration" label="I agree to commit to the term duration (3 months + 2 weeks flex)." checked={formData.commitToDuration} onChange={handleChange} />
-                    <FormCheckbox id="consentToCommunications" label="I consent to receiving communications regarding schedules and materials." checked={formData.consentToCommunications} onChange={handleChange} />
-                    <FormCheckbox id="understandRenewal" label="I understand that payment covers one term and renewal is required to continue." checked={formData.understandRenewal} onChange={handleChange} />
-                    <FormInput id="signature" label="Signature (Full Name as Consent)" value={formData.signature} onChange={handleChange} />
+                    <FormCheckbox id="commitToDuration" name="commitToDuration" label="I agree to commit to the term duration (3 months + 2 weeks flex)." checked={formData.commitToDuration} onChange={handleChange} />
+                    <FormCheckbox id="consentToCommunications" name="consentToCommunications" label="I consent to receiving communications regarding schedules and materials." checked={formData.consentToCommunications} onChange={handleChange} />
+                    <FormCheckbox id="understandRenewal" name="understandRenewal" label="I understand that payment covers one term and renewal is required to continue." checked={formData.understandRenewal} onChange={handleChange} />
+                    <FormInput id="signature" name="signature" label="Signature (Full Name as Consent)" value={formData.signature} onChange={handleChange} />
                 </div>
             )}
             {error && <p className="text-red-500 text-sm text-center my-4">Error: {error}</p>}

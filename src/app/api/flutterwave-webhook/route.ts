@@ -25,21 +25,28 @@ export async function POST(req: NextRequest) {
 
     // We are only interested in successful charge events
     if (eventData.event === "charge.completed" && eventData.data.status === "successful") {
-      const { tx_ref } = eventData.data; // tx_ref is the transaction reference
+      const { tx_ref } = eventData.data; // tx_ref is the transaction reference (we use it as enrollment id)
+      const transaction_id = eventData.data?.id || eventData.data?.flw_ref || eventData.data?.tx_id || null;
 
       // 3. UPDATE THE DATABASE
-      // Use the tx_ref (which is our unique registration ID) to update the record
-      const { error: updateError } = await supabase
-        .from('registrations')
-        .update({ payment_status: 'paid' })
+      // Try to update enrollments first (new flow), fallback to registrations (legacy)
+      let { error: updateError } = await supabase
+        .from('enrollments')
+        .update({ payment_status: 'paid', transaction_id })
         .eq('id', tx_ref);
 
       if (updateError) {
-        // Log any database errors for monitoring and manual intervention
-        console.error(`Failed to update payment status for registration ref: ${tx_ref}`, updateError);
+        const { error: legacyError } = await supabase
+          .from('registrations')
+          .update({ payment_status: 'paid' })
+          .eq('id', tx_ref);
+        if (legacyError) {
+          console.error(`Failed to update payment status for ref: ${tx_ref}`, legacyError);
+        } else {
+          console.log(`Payment status updated (legacy registrations) for ref: ${tx_ref}`);
+        }
       } else {
-        // Success!
-        console.log(`Successfully updated payment status to 'paid' for registration: ${tx_ref}`);
+        console.log(`Payment status updated (enrollments) for ref: ${tx_ref}`);
       }
     }
     
