@@ -370,12 +370,12 @@ export default function AdminProgramsEditClient({ programId }: { programId: numb
             </div>
           </div>
           <div>
-            <label className="block text-sm mb-1">Start Date & Time</label>
-            <input type="datetime-local" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className="input" />
+            <label className="block text-sm mb-1" htmlFor="start_date">Start Date & Time</label>
+            <input id="start_date" type="datetime-local" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} className="input" />
           </div>
           <div>
-            <label className="block text-sm mb-1">Enrollment Deadline (Date & Time)</label>
-            <input type="datetime-local" value={form.enrollment_deadline} onChange={(e) => setForm({ ...form, enrollment_deadline: e.target.value })} className="input" />
+            <label className="block text-sm mb-1" htmlFor="enrollment_deadline">Enrollment Deadline (Date & Time)</label>
+            <input id="enrollment_deadline" type="datetime-local" value={form.enrollment_deadline} onChange={(e) => setForm({ ...form, enrollment_deadline: e.target.value })} className="input" />
           </div>
         </div>
       </div>
@@ -389,20 +389,20 @@ export default function AdminProgramsEditClient({ programId }: { programId: numb
                 <p className="text-sm text-[hsl(var(--muted-foreground))] mb-2">{p.plan_type === 'individual' ? 'Individual' : `Family of ${p.family_size}`}</p>
                 <div className="grid grid-cols-3 gap-3">
                   <div>
-                    <label className="block text-xs mb-1">Price</label>
-                    <input value={p.price} onChange={(e) => {
+                    <label className="block text-xs mb-1" htmlFor={`plan-${idx}-price`}>Price</label>
+                    <input id={`plan-${idx}-price`} value={p.price} onChange={(e) => {
                       const next = [...plans]; next[idx] = { ...p, price: e.target.value }; setPlans(next);
                     }} className="input" />
                   </div>
                   <div>
-                    <label className="block text-xs mb-1">Currency</label>
-                    <input value={p.currency} onChange={(e) => {
+                    <label className="block text-xs mb-1" htmlFor={`plan-${idx}-currency`}>Currency</label>
+                    <input id={`plan-${idx}-currency`} value={p.currency} onChange={(e) => {
                       const next = [...plans]; next[idx] = { ...p, currency: e.target.value }; setPlans(next);
                     }} className="input" />
                   </div>
                   <div>
-                    <label className="block text-xs mb-1">Duration (months)</label>
-                    <input value={p.duration_months} onChange={(e) => {
+                    <label className="block text-xs mb-1" htmlFor={`plan-${idx}-duration`}>Duration (months)</label>
+                    <input id={`plan-${idx}-duration`} value={p.duration_months} onChange={(e) => {
                       const next = [...plans]; next[idx] = { ...p, duration_months: e.target.value }; setPlans(next);
                     }} className="input" />
                   </div>

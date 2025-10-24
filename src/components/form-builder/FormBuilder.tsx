@@ -413,6 +413,8 @@ export const FormBuilder: React.FC<{
                         className="w-full md:w-56 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-3 py-2 text-[hsl(var(--foreground))] focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
                         value={f.type}
                         onChange={(e) => updateField(f.id, { type: e.target.value as FieldType })}
+                        aria-label="Field type"
+                        title="Field type"
                       >
                         {types.filter((t) => t !== "section").map((t) => {
                           const Meta = TYPE_META[t];
