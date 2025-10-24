@@ -255,6 +255,8 @@ export function NotificationBell() {
                 <button
                   onClick={() => setIsOpen(false)}
                   className="p-1 text-gray-400 hover:text-gray-600 rounded"
+                  aria-label="Close notifications panel"
+                  title="Close"
                 >
                   <FiX className="h-4 w-4" />
                 </button>
@@ -341,6 +343,7 @@ export function NotificationBell() {
                               onClick={() => markAsRead(notification.id)}
                               className="p-1 text-gray-400 hover:text-blue-600 rounded"
                               title="Mark as read"
+                              aria-label="Mark notification as read"
                             >
                               <FiCheck className="h-3 w-3" />
                             </button>
@@ -354,6 +357,7 @@ export function NotificationBell() {
                                 : 'text-gray-400 hover:text-blue-600'
                             }`}
                             title={notification.is_pinned ? 'Unpin' : 'Pin'}
+                            aria-label={notification.is_pinned ? 'Unpin notification' : 'Pin notification'}
                           >
                         <FiBookmark className="h-3 w-3" />
                           </button>

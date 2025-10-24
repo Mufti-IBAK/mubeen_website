@@ -397,8 +397,9 @@ export default function EnrollPage() {
               {/* Family Size Selection */}
               {selectedType === 'family' && familySizeOptions.length > 0 && (
                 <div>
-                  <label className="block text-sm font-medium mb-2">Family Size</label>
+                  <label className="block text-sm font-medium mb-2" htmlFor="familySizeSelect">Family Size</label>
                   <select 
+                    id="familySizeSelect"
                     value={familySize} 
                     onChange={(e) => setFamilySize(Number(e.target.value))}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"

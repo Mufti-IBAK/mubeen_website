@@ -65,6 +65,8 @@ const Toast = React.forwardRef<HTMLDivElement, ToastProps>(
             <button
               onClick={onClose}
               className="flex-shrink-0 p-1 rounded-md hover:bg-gray-100 transition-colors"
+              aria-label="Close"
+              title="Close"
             >
               <FiX className="h-4 w-4" />
             </button>

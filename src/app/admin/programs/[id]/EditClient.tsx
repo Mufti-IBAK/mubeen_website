@@ -245,33 +245,33 @@ export default function AdminProgramsEditClient({ programId }: { programId: numb
       <form onSubmit={save} className="card grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="card-body grid grid-cols-1 md:grid-cols-2 gap-4 md:col-span-2">
           <div>
-            <label className="block text-sm mb-1">Title</label>
-            <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required className="input" />
+            <label className="block text-sm mb-1" htmlFor="title">Title</label>
+            <input id="title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} required className="input" />
           </div>
           <div>
-            <label className="block text-sm mb-1">Slug</label>
-            <input value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} required className="input" />
+            <label className="block text-sm mb-1" htmlFor="slug">Slug</label>
+            <input id="slug" value={form.slug} onChange={(e) => setForm({ ...form, slug: e.target.value })} required className="input" />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm mb-1">Description</label>
-            <textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="textarea" rows={4} />
+            <label className="block text-sm mb-1" htmlFor="description">Description</label>
+            <textarea id="description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} className="textarea" rows={4} />
           </div>
           <div>
-            <label className="block text-sm mb-1">Upload Cover</label>
-            <input name="image" type="file" className="input" />
+            <label className="block text-sm mb-1" htmlFor="image">Upload Cover</label>
+            <input id="image" name="image" type="file" className="input" />
             {uploadMsg && <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">{uploadMsg}</p>}
           </div>
           <div>
-            <label className="block text-sm mb-1">Or Image URL</label>
-            <input value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} className="input" />
+            <label className="block text-sm mb-1" htmlFor="image_url">Or Image URL</label>
+            <input id="image_url" value={form.image_url} onChange={(e) => setForm({ ...form, image_url: e.target.value })} className="input" />
           </div>
           <div>
-            <label className="block text-sm mb-1">Duration</label>
-            <input value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="input" />
+            <label className="block text-sm mb-1" htmlFor="duration">Duration</label>
+            <input id="duration" value={form.duration} onChange={(e) => setForm({ ...form, duration: e.target.value })} className="input" />
           </div>
           <div className="md:col-span-2">
-            <label className="block text-sm mb-1">Tags (comma-separated)</label>
-            <input value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} className="input" />
+            <label className="block text-sm mb-1" htmlFor="tags">Tags (comma-separated)</label>
+            <input id="tags" value={form.tags} onChange={(e) => setForm({ ...form, tags: e.target.value })} className="input" />
           </div>
           <div className="flex items-center gap-2">
             <input id="flagship3" type="checkbox" checked={form.is_flagship} onChange={(e) => setForm({ ...form, is_flagship: e.target.checked })} />
@@ -288,24 +288,24 @@ export default function AdminProgramsEditClient({ programId }: { programId: numb
       <div className="card">
         <div className="card-body grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm mb-1">Overview</label>
-            <textarea value={form.overview} onChange={(e) => setForm({ ...form, overview: e.target.value })} className="textarea" rows={4} />
+            <label className="block text-sm mb-1" htmlFor="overview">Overview</label>
+            <textarea id="overview" value={form.overview} onChange={(e) => setForm({ ...form, overview: e.target.value })} className="textarea" rows={4} />
           </div>
           <div>
-            <label className="block text-sm mb-1">Prerequisites</label>
-            <textarea value={form.prerequisites} onChange={(e) => setForm({ ...form, prerequisites: e.target.value })} className="textarea" rows={4} />
+            <label className="block text-sm mb-1" htmlFor="prerequisites">Prerequisites</label>
+            <textarea id="prerequisites" value={form.prerequisites} onChange={(e) => setForm({ ...form, prerequisites: e.target.value })} className="textarea" rows={4} />
           </div>
           <div>
-            <label className="block text-sm mb-1">Level</label>
-            <input value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} className="input" />
+            <label className="block text-sm mb-1" htmlFor="level">Level</label>
+            <input id="level" value={form.level} onChange={(e) => setForm({ ...form, level: e.target.value })} className="input" />
           </div>
           <div>
-            <label className="block text-sm mb-1">Language</label>
-            <input value={form.language} onChange={(e) => setForm({ ...form, language: e.target.value })} className="input" />
+            <label className="block text-sm mb-1" htmlFor="language">Language</label>
+            <input id="language" value={form.language} onChange={(e) => setForm({ ...form, language: e.target.value })} className="input" />
           </div>
           <div>
-            <label className="block text-sm mb-1">Outcomes (comma-separated)</label>
-            <input value={form.outcomes} onChange={(e) => setForm({ ...form, outcomes: e.target.value })} className="input" />
+            <label className="block text-sm mb-1" htmlFor="outcomes">Outcomes (comma-separated)</label>
+            <input id="outcomes" value={form.outcomes} onChange={(e) => setForm({ ...form, outcomes: e.target.value })} className="input" />
           </div>
 
           {/* Instructors editor */}
