@@ -121,9 +121,16 @@ export default function AdminProgramsEditClient({ programId }: { programId: numb
       enrollment_deadline: form.enrollment_deadline || null,
     };
 
+    // Include Supabase access token so API route can verify admin
+    const { data: sessionRes } = await supabase.auth.getSession();
+    const accessToken = sessionRes.session?.access_token;
+
     const res = await fetch(`/api/admin/programs/${id}/update`, {
       method: 'PUT',
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+      },
       body: JSON.stringify(payload),
     });
     const json = await res.json().catch(() => ({}));
@@ -169,8 +176,48 @@ export default function AdminProgramsEditClient({ programId }: { programId: numb
         duration_months: Number(p.duration_months || '3'),
       }));
     if (payload.length === 0) { setPlansMsg('Nothing to save'); return; }
-    const { error } = await supabase.from('program_plans').upsert(payload, { onConflict: 'program_id,plan_type,family_size' });
-    setPlansMsg(error ? error.message : 'Plans saved');
+
+    // Split into individual (family_size null) and family entries (family_size not null)
+    const indiv = payload.find(p => p.plan_type === 'individual' && (p.family_size === null || typeof p.family_size === 'undefined'));
+    const families = payload.filter(p => p.plan_type === 'family' && p.family_size !== null && typeof p.family_size !== 'undefined');
+
+    try {
+      // Upsert families using unique (program_id, plan_type, family_size)
+      if (families.length) {
+        const { error: famErr } = await supabase
+          .from('program_plans')
+          .upsert(families, { onConflict: 'program_id,plan_type,family_size' });
+        if (famErr) throw famErr;
+      }
+
+      // For the individual plan (family_size null), ON CONFLICT won't match NULL.
+      // So we update if exists, else insert.
+      if (indiv) {
+        const { data: existing } = await supabase
+          .from('program_plans')
+          .select('id')
+          .eq('program_id', id)
+          .eq('plan_type', 'individual')
+          .is('family_size', null)
+          .single();
+        if (existing?.id) {
+          const { error: updErr } = await supabase
+            .from('program_plans')
+            .update({ price: indiv.price, currency: indiv.currency, duration_months: indiv.duration_months })
+            .eq('id', existing.id);
+          if (updErr) throw updErr;
+        } else {
+          const { error: insErr } = await supabase
+            .from('program_plans')
+            .insert({ program_id: id, plan_type: 'individual', family_size: null, price: indiv.price, currency: indiv.currency, duration_months: indiv.duration_months });
+          if (insErr) throw insErr;
+        }
+      }
+
+      setPlansMsg('Plans saved');
+    } catch (e: any) {
+      setPlansMsg(e?.message || 'Failed to save plans');
+    }
   };
 
   if (loading) return <p className="text-[hsl(var(--muted-foreground))]">Loading...</p>;
@@ -329,36 +376,6 @@ export default function AdminProgramsEditClient({ programId }: { programId: numb
           <div>
             <label className="block text-sm mb-1">Enrollment Deadline (Date & Time)</label>
             <input type="datetime-local" value={form.enrollment_deadline} onChange={(e) => setForm({ ...form, enrollment_deadline: e.target.value })} className="input" />
-          </div>
-          <div className="md:col-span-2 text-right">
-            <button type="button" className="btn-primary" onClick={async () => {
-              setMessage('');
-              const instructors = instructorsArr.filter(i => i.name.trim() !== '');
-              const faqs = faqsArr.filter(f => f.q.trim() && f.a.trim());
-              const schedule = { items: scheduleItems.filter(s => s.title.trim() && s.when.trim()) };
-              
-              const payload = {
-                overview: form.overview || null,
-                prerequisites: form.prerequisites || null,
-                level: form.level || null,
-                language: form.language || null,
-                outcomes: form.outcomes ? form.outcomes.split(',').map(s => s.trim()).filter(Boolean) : null,
-                instructors,
-                faqs,
-                schedule,
-                start_date: form.start_date || null,
-                enrollment_deadline: form.enrollment_deadline || null,
-              };
-              
-              const res = await fetch(`/api/admin/programs/${id}/update`, {
-                method: 'PUT',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify(payload),
-              });
-              const json = await res.json().catch(() => ({}));
-              setMessage(res.ok && json?.ok ? 'Program details saved' : (json?.error || 'Failed to save program details'));
-            }}>Save Program Details</button>
-            {message && <span className="ml-3 text-sm text-[hsl(var(--muted-foreground))]">{message}</span>}
           </div>
         </div>
       </div>

@@ -1,5 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
+import { supabase } from '@/lib/supabaseClient';
+
+// Build headers with optional JSON content-type and Supabase bearer token
+const buildHeaders = async (json = false): Promise<Headers> => {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  const h = new Headers(json ? { 'Content-Type': 'application/json' } : undefined);
+  if (token) h.set('Authorization', `Bearer ${token}`);
+  return h;
+};
 
 export interface DraftData {
   id: string;
@@ -51,10 +61,11 @@ export function useDraftRegistration({
     }
   }, [formData]);
 
+
   const loadExistingDraft = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/drafts', { credentials: 'same-origin' });
+      const response = await fetch('/api/drafts', { credentials: 'same-origin', headers: await buildHeaders() });
       if (!response.ok) {
         if (response.status === 401) return; // treat as no drafts
         throw new Error('Failed to load drafts');
@@ -62,7 +73,7 @@ export function useDraftRegistration({
       
       const { drafts } = await response.json();
       const existingDraft = drafts.find((draft: DraftData) => 
-        draft.program_id === programId && 
+        String(draft.program_id) === String(programId) && 
         draft.registration_type === registrationType
       );
       
@@ -103,7 +114,8 @@ export function useDraftRegistration({
     try {
       const response = await fetch('/api/drafts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        headers: await buildHeaders(true),
         body: JSON.stringify({
           program_id: programId,
           registration_type: registrationType,
@@ -118,25 +130,12 @@ export function useDraftRegistration({
       setLastSaved(new Date());
       hasChangesRef.current = false;
 
-      if (showToast) {
-        toast({
-          title: 'Draft Saved',
-          description: 'Your progress has been saved successfully',
-        });
-      }
 
       onSaveSuccess?.();
     } catch (error) {
       console.error('Error saving draft:', error);
       const errorMessage = 'Failed to save progress';
       
-      if (showToast) {
-        toast({
-          title: 'Save Failed',
-          description: errorMessage,
-          variant: 'destructive',
-        });
-      }
       
       onSaveError?.(errorMessage);
     } finally {
@@ -175,7 +174,8 @@ export function useDraftRegistration({
     try {
       const response = await fetch('/api/drafts', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        headers: await buildHeaders(true),
         body: JSON.stringify({ draft_id: draftId }),
       });
 
@@ -215,6 +215,8 @@ export function useDraftRegistration({
     try {
       const response = await fetch(`/api/drafts?id=${draftId}`, {
         method: 'DELETE',
+        credentials: 'same-origin',
+        headers: await buildHeaders(),
       });
 
       if (!response.ok) throw new Error('Failed to delete draft');
@@ -241,7 +243,7 @@ export function useDraftRegistration({
     }
   };
 
-  const manualSave = () => saveDraft(true);
+  const manualSave = () => saveDraft(false);
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -297,7 +299,7 @@ export function useUserDrafts() {
   const loadDrafts = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/drafts', { credentials: 'same-origin' });
+      const response = await fetch('/api/drafts', { credentials: 'same-origin', headers: await buildHeaders() });
       if (!response.ok) {
         if (response.status === 401) { setDrafts([]); return; }
         throw new Error('Failed to load drafts');

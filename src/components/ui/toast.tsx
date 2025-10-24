@@ -9,7 +9,7 @@ const toastVariants = {
   destructive: "bg-red-50 border border-red-200 text-red-900",
 }
 
-export interface ToastProps extends React.HTMLAttributes<HTMLDivElement> {
+export interface ToastProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'title'> {
   variant?: "default" | "destructive"
   title?: React.ReactNode
   description?: React.ReactNode

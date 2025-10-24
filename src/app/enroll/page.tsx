@@ -89,7 +89,7 @@ export default function EnrollPage() {
           return;
         }
 
-        const formattedPlans: Plan[] = planRows.map(r => ({
+        const formattedPlans: Plan[] = planRows.map((r: any) => ({
           id: r.id,
           plan_type: r.plan_type,
           family_size: r.family_size,
@@ -268,35 +268,58 @@ export default function EnrollPage() {
       setLoading(true);
       setMessage('Processing registration...');
 
-      // Create enrollment record
-      const { data: enrollment, error: enrollError } = await supabase
-        .from('enrollments')
-        .insert({
-          user_id: user.id,
-          program_id: program.id,
-          is_family: selectedType === 'family',
-          family_size: selectedType === 'family' ? familySize : null,
-          status: 'submitted',
-          payment_status: 'unpaid',
-          plan_id: selectedPlan.id,
-          duration_months: selectedPlan.duration_months,
-          form_data: { head: headData, members: memberData }
-        })
-        .select('id')
-        .single();
-
-      if (enrollError || !enrollment) {
-        throw new Error(enrollError?.message || 'Failed to create enrollment');
+      // Use existing draft row if present; otherwise insert a new enrollment
+      let enrollmentId: number | null = null;
+      if (draftHook.draftId) {
+        const draftIdNum = Number(draftHook.draftId);
+        const { error: updErr } = await supabase
+          .from('enrollments')
+          .update({
+            user_id: user.id,
+            program_id: program.id,
+            is_family: selectedType === 'family',
+            family_size: selectedType === 'family' ? familySize : null,
+            status: 'submitted',
+            payment_status: 'unpaid',
+            plan_id: selectedPlan.id,
+            duration_months: selectedPlan.duration_months,
+            form_data: { head: headData, members: memberData },
+            is_draft: false,
+            last_edited_at: new Date().toISOString(),
+          })
+          .eq('id', draftIdNum);
+        if (updErr) throw updErr;
+        enrollmentId = draftIdNum;
+      } else {
+        const { data: enrollment, error: enrollError } = await supabase
+          .from('enrollments')
+          .insert({
+            user_id: user.id,
+            program_id: program.id,
+            is_family: selectedType === 'family',
+            family_size: selectedType === 'family' ? familySize : null,
+            status: 'submitted',
+            payment_status: 'unpaid',
+            plan_id: selectedPlan.id,
+            duration_months: selectedPlan.duration_months,
+            form_data: { head: headData, members: memberData }
+          })
+          .select('id')
+          .single();
+        if (enrollError || !enrollment) {
+          throw new Error(enrollError?.message || 'Failed to create enrollment');
+        }
+        enrollmentId = enrollment.id as number;
       }
 
       // Initiate payment
       setMessage('Redirecting to payment...');
       FlutterwaveCheckout({
         public_key: process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY,
-        tx_ref: String(enrollment.id),
+        tx_ref: String(enrollmentId),
         amount: selectedPlan.price,
         currency: selectedPlan.currency || 'NGN',
-        redirect_url: `/payment-success?ref=${enrollment.id}`,
+        redirect_url: `/payment-success?ref=${enrollmentId}`,
         customer: { 
           email: user.email, 
           name: user.email?.split('@')[0] || 'Student' 
@@ -438,15 +461,13 @@ export default function EnrollPage() {
             {formSchema && !loading && (
               <>
                 <FormRenderer 
+                  key={`${program?.id ?? 'p'}-${selectedType}-${draftHook.draftId ?? draftHook.lastSaved ?? 'none'}`}
                   schema={formSchema} 
                   onSubmit={handleHeadFormSubmit}
                   disabled={loading}
-                  initialData={draftHook.formData}
+                  initialValues={draftHook.formData as Record<string, any>}
                   onChange={(data) => {
-                    // Update draft hook with form changes
-                    Object.entries(data).forEach(([key, value]) => {
-                      draftHook.updateFormData(key, value);
-                    });
+                    Object.entries(data).forEach(([k, v]) => draftHook.updateFormData(k, v as any));
                   }}
                 />
                 

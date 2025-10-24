@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { ProgramCard, Program } from '@/components/ProgramCard';
 import React from 'react';
 
-export const revalidate = 3600; 
+export const revalidate = 0;
 
 async function ProgramsPage(): Promise<React.JSX.Element> {
   

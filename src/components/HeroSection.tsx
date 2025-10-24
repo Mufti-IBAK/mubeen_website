@@ -18,7 +18,8 @@ export const HeroSection = () => {
   React.useEffect(() => {
     const loadProfile = async (userId: string) => {
       const { data } = await supabase.from('profiles').select('role').eq('id', userId).single();
-      setIsAdmin((data as { role?: string } | null)?.role === 'admin');
+      const role = (data as { role?: string } | null)?.role;
+      setIsAdmin(role === 'admin' || role === 'super_admin');
     };
     const init = async () => {
       const { data } = await supabase.auth.getSession();
@@ -28,7 +29,7 @@ export const HeroSection = () => {
       else setIsAdmin(false);
     };
     init();
-    const { data: sub } = supabase.auth.onAuthStateChange(async (_e, session) => {
+    const { data: sub } = supabase.auth.onAuthStateChange(async (_e: unknown, session: any) => {
       setIsAuthed(!!session);
       if (session?.user?.id) await loadProfile(session.user.id);
       else setIsAdmin(false);

@@ -59,7 +59,7 @@ export default function AboutPage() {
           <h2 className="mb-12 text-3xl font-extrabold md:text-4xl text-brand-dark font-heading">Meet Our Founder</h2>
           <div className="max-w-md mx-auto">
              <Image 
-                src="https://images.pexels.com/photos/415829/pexels-photo-415829.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2" // Replace with actual founder image URL
+src="/logo.png"
                 alt="Dr. Mufti Ibn Al Khattāb"
                 width={150}
                 height={150}

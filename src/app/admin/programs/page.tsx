@@ -44,8 +44,23 @@ export default function AdminProgramsListPage() {
 
   const remove = async (id: number) => {
     if (!confirm("Delete this program?")) return;
-    await supabase.from("programs").delete().eq("id", id);
-    setItems(items.filter((i) => i.id !== id));
+    try {
+      const { data: sessionRes } = await supabase.auth.getSession();
+      const accessToken = sessionRes.session?.access_token;
+      const res = await fetch(`/api/admin/programs/${id}/delete`, {
+        method: 'DELETE',
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+      });
+      if (!res.ok) {
+        const t = await res.text();
+        alert(`Delete failed: ${t}`);
+        return;
+      }
+      setItems((prev) => prev.filter((i) => i.id !== id));
+    } catch (e) {
+      console.error(e);
+      alert('Delete failed');
+    }
   };
 
   return (

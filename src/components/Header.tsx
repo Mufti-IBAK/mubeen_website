@@ -39,7 +39,8 @@ export const Header = () => {
         setIsAuthed(!!session);
         if (session) {
           const { data: profile } = await supabase.from('profiles').select('role, dark_mode').eq('id', session.user.id).single();
-          setIsAdmin((profile as { role?: string; dark_mode?: boolean } | null)?.role === 'admin');
+          const role = (profile as { role?: string; dark_mode?: boolean } | null)?.role;
+          setIsAdmin(role === 'admin' || role === 'super_admin');
           const dm = (profile as { dark_mode?: boolean } | null)?.dark_mode === true;
           if (typeof document !== 'undefined') {
             document.documentElement.classList.toggle('dark', dm);

@@ -304,7 +304,7 @@ export function NotificationBell() {
                               
                               {/* Pinned Icon */}
                               {notification.is_pinned && (
-                                <FiPin className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                                <FiBookmark className="h-3 w-3 text-blue-500 flex-shrink-0" />
                               )}
                               
                               {/* Unread Indicator */}

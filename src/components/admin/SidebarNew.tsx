@@ -27,7 +27,6 @@ export function AdminSidebarNew({ open, onClose }: { open: boolean; onClose: () 
     { href: "/admin/registrations", label: "Registrations", icon: FaUsers },
     { href: "/admin/programs", label: "Programs", icon: FaBook },
     { href: "/admin/resources", label: "Resources", icon: FaFileAlt },
-    { href: "/admin/notifications", label: "Notifications", icon: FaBell },
     { href: "/admin/user-management", label: "Users", icon: FaUsers },
   ];
 

@@ -40,8 +40,9 @@ export default function DashboardPage() {
       // load enrollments
       const { data: enr } = await supabase
         .from('enrollments')
-        .select('id, program_id, status, payment_status, created_at, duration_months, classroom_link, plan_id, defer_active')
+        .select('id, program_id, status, payment_status, created_at, duration_months, classroom_link, plan_id, defer_active, is_draft')
         .eq('user_id', user.id)
+        .eq('is_draft', false)
         .order('created_at', { ascending: false });
       const list = (enr as Enrollment[]) || [];
       setEnrollments(list);
@@ -100,12 +101,15 @@ export default function DashboardPage() {
       <div className="container-page">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-3xl md:text-4xl font-extrabold mb-1">Welcome{profile?.full_name ? ', ' : ''}<span className="bg-gradient-to-r from-sky-500 via-indigo-500 to-purple-500 bg-clip-text text-transparent">{profile?.full_name || ''}</span></h1>
+            <h1 className="text-3xl md:text-4xl font-extrabold mb-1">Welcome{profile?.full_name ? ', ' : ''}<span className="bg-gradient-to-r from-emerald-500 via-amber-500 to-rose-500 bg-clip-text text-transparent">{profile?.full_name || ''}</span></h1>
             {enrollments[0] && (
               <p className="text-sm text-[hsl(var(--muted-foreground))]">Enrollment ID: <span className="font-semibold text-[hsl(var(--foreground))]">#{enrollments[0].id}</span></p>
             )}
           </div>
           <div className="flex items-center gap-2">
+            {(profile?.role === 'admin' || profile?.role === 'super_admin') && (
+              <Link href="/admin" className="btn-outline">Admin</Link>
+            )}
             <Link href="/dashboard/registrations" className="btn-primary">My Registrations</Link>
             <Link href="/programs" className="btn-outline">Browse Programs</Link>
           </div>
@@ -164,6 +168,9 @@ export default function DashboardPage() {
           <div className="dash-card rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 transition-shadow hover:shadow-md">
             <h2 className="text-base font-semibold mb-1 inline-flex items-center gap-2"><FiSend className="opacity-70" /> Quick actions</h2>
             <div className="mt-2 flex flex-wrap gap-2">
+              {(profile?.role === 'admin' || profile?.role === 'super_admin') && (
+                <Link href="/admin" className="btn-outline">Admin Dashboard</Link>
+              )}
               <Link href="/dashboard/registrations" className="btn-primary">My Registrations</Link>
               <Link href="/programs" className="btn-outline">Browse Programs</Link>
               <a href="mailto:mubeenacademy001@gmail.com" className="btn-outline">Contact Support</a>
@@ -211,7 +218,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Link 
-                        href={`/enroll?program=${draft.program_id}`} 
+                        href={`/enroll?program=${(draft as any).program_slug ?? draft.program_id}`} 
                         className="btn-primary"
                         onClick={refreshDrafts}
                       >

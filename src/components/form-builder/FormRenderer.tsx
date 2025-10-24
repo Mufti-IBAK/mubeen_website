@@ -5,24 +5,31 @@ type RendererProps = {
   schema: FormSchema;
   onSubmit: (vals: Record<string, unknown>) => void;
   onSaveDraft?: (vals: Record<string, unknown>) => void; // optional Save & Continue Later
+  onChange?: (vals: Record<string, unknown>) => void;
   initialValues?: Record<string, any>;
   disabled?: boolean;
 };
 
-export const FormRenderer: React.FC<RendererProps> = ({ schema, onSubmit, onSaveDraft, initialValues, disabled }) => {
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const fd = new FormData(e.currentTarget);
-    const vals: Record<string, any> = {};
+export const FormRenderer: React.FC<RendererProps> = ({ schema, onSubmit, onSaveDraft, onChange, initialValues, disabled }) => {
+  const formRef = React.useRef<HTMLFormElement>(null);
+  const collect = (): Record<string, unknown> => {
+    const form = formRef.current;
+    const out: Record<string, unknown> = {};
+    if (!form) return out;
+    const fd = new FormData(form);
     for (const [k, v] of fd.entries()) {
-      if (Object.prototype.hasOwnProperty.call(vals, k)) {
-        const prev = vals[k];
-        vals[k] = Array.isArray(prev) ? [...prev, v] : [prev, v];
+      if (Object.prototype.hasOwnProperty.call(out, k)) {
+        const prev = out[k];
+        out[k] = Array.isArray(prev) ? [...prev as any[], v] : [prev, v];
       } else {
-        vals[k] = v;
+        out[k] = v;
       }
     }
-    onSubmit(vals);
+    return out;
+  };
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    onSubmit(collect());
   };
 
   const labelClass = (f: { style?: { bold?: boolean; italic?: boolean; underline?: boolean } }) => {
@@ -57,7 +64,7 @@ export const FormRenderer: React.FC<RendererProps> = ({ schema, onSubmit, onSave
   const atEnd = idx === Math.max(sections.length - 1, 0);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-[hsl(var(--foreground))]">{schema.title}</h2>
         {schema.description && (
@@ -84,9 +91,9 @@ export const FormRenderer: React.FC<RendererProps> = ({ schema, onSubmit, onSave
                   {f.description && <p className="-mt-1 mb-2 text-xs text-[hsl(var(--muted-foreground))]">{f.description}</p>}
 
                   {f.type === "textarea" ? (
-                    <textarea name={f.id} required={!!f.required} disabled={!!disabled} defaultValue={typeof v === 'string' ? v : ''} className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-3 py-2 text-[hsl(var(--foreground))]" />
+                    <textarea name={f.id} required={!!f.required} disabled={!!disabled} defaultValue={typeof v === 'string' ? v : ''} onChange={() => onChange?.(collect())} className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-3 py-2 text-[hsl(var(--foreground))]" />
                   ) : f.type === "select" ? (
-                    <select name={f.id} required={!!f.required} disabled={!!disabled} defaultValue={typeof v === 'string' ? v : ''} className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-3 py-2 text-[hsl(var(--foreground))]">
+                    <select name={f.id} required={!!f.required} disabled={!!disabled} defaultValue={typeof v === 'string' ? v : ''} onChange={() => onChange?.(collect())} className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-3 py-2 text-[hsl(var(--foreground))]">
                       <option value="">Select...</option>
                       {(f.options || []).map((o: string) => (
                         <option key={o} value={o}>{o}</option>
@@ -96,19 +103,19 @@ export const FormRenderer: React.FC<RendererProps> = ({ schema, onSubmit, onSave
                     <div className="flex gap-3 flex-wrap">
                       {(f.options || []).map((o: string) => (
                         <label key={o} className="flex items-center gap-2 text-[hsl(var(--foreground))]">
-                          <input type={f.type} name={f.id} value={o} disabled={!!disabled} defaultChecked={Array.isArray(v) ? v.includes(o) : v === o} />
+                          <input type={f.type} name={f.id} value={o} disabled={!!disabled} defaultChecked={Array.isArray(v) ? v.includes(o) : v === o} onChange={() => onChange?.(collect())} />
                           <span>{o}</span>
                         </label>
                       ))}
                     </div>
                   ) : f.type === "file" ? (
-                    <input type="file" name={f.id} required={!!f.required} disabled={!!disabled} className="block w-full text-[hsl(var(--foreground))]" />
+                    <input type="file" name={f.id} required={!!f.required} disabled={!!disabled} onChange={() => onChange?.(collect())} className="block w-full text-[hsl(var(--foreground))]" />
                   ) : f.type === "datetime" || f.type === "datetime-local" ? (
-                    <input type="datetime-local" name={f.id} required={!!f.required} disabled={!!disabled} defaultValue={typeof v === 'string' ? v : ''} className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-3 py-2 text-[hsl(var(--foreground))]" />
+                    <input type="datetime-local" name={f.id} required={!!f.required} disabled={!!disabled} defaultValue={typeof v === 'string' ? v : ''} onChange={() => onChange?.(collect())} className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-3 py-2 text-[hsl(var(--foreground))]" />
                   ) : f.type === "time" ? (
-                    <input type="time" name={f.id} required={!!f.required} disabled={!!disabled} defaultValue={typeof v === 'string' ? v : ''} className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-3 py-2 text-[hsl(var(--foreground))]" />
+                    <input type="time" name={f.id} required={!!f.required} disabled={!!disabled} defaultValue={typeof v === 'string' ? v : ''} onChange={() => onChange?.(collect())} className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-3 py-2 text-[hsl(var(--foreground))]" />
                   ) : (
-                    <input type={f.type} name={f.id} required={!!f.required} disabled={!!disabled} defaultValue={typeof v === 'string' || typeof v === 'number' ? String(v) : ''} className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-3 py-2 text-[hsl(var(--foreground))]" />
+                    <input type={f.type} name={f.id} required={!!f.required} disabled={!!disabled} defaultValue={typeof v === 'string' || typeof v === 'number' ? String(v) : ''} onChange={() => onChange?.(collect())} className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-3 py-2 text-[hsl(var(--foreground))]" />
                   )}
                 </div>
               );
