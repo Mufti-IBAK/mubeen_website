@@ -12,10 +12,14 @@ export default function PaymentSuccessPage() {
             Thank you for your payment. Your registration is complete and your spot is secured.
           </p>
           <p className="text-gray-600 mb-6">
-            We have sent a confirmation email with your registration details. A member of our team will contact you within **24 hours** with the next steps.
+            We have sent a confirmation email with your registration details. A member of our team will contact you within 24 hours with the next steps.
+          </p>
+          <p className="text-gray-700 mb-4">
+            If you paid via bank transfer, please take a screenshot of the transfer receipt and email it to
+            <a href="mailto:mubeenacademy001@gmail.com" className="text-brand-primary font-semibold"> mubeenacademy001@gmail.com</a> for verification.
           </p>
           <p className="text-sm text-gray-500">
-            If you have any urgent questions, please contact our support team at <a href="mailto:mubeenacademy001@gmail.com" className="text-brand-primary font-semibold">mubeenacademy001@gmail.com</a>.
+            For any urgent questions, contact our support team at <a href="mailto:mubeenacademy001@gmail.com" className="text-brand-primary font-semibold">mubeenacademy001@gmail.com</a>.
           </p>
           <div className="mt-8">
             <Link href="/" passHref>

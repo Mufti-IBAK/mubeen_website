@@ -4,8 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { FormRenderer } from "@/components/form-builder/FormRenderer";
 import type { FormSchema } from "@/components/form-builder/FormBuilder";
-
-declare const FlutterwaveCheckout: any;
+import { useRouter } from "next/navigation";
 
 type Plan = { id: number; plan_type: 'individual'|'family'; family_size: number|null; price: number; currency: string; duration_months: number };
 
@@ -22,6 +21,7 @@ export const DynamicRegistrationFlow: React.FC<{ programSlug?: string }> = ({ pr
   const [step, setStep] = useState<FlowStep>(FlowStep.SELECT_PLAN);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const router = useRouter();
 
   // Family size options come from admin-defined plans (no hardcoding)
   const familySizeOptions = useMemo(() => {
@@ -159,108 +159,104 @@ export const DynamicRegistrationFlow: React.FC<{ programSlug?: string }> = ({ pr
   };
 
   const saveDraft = async (current: Record<string, unknown>) => {
-    const { data: userRes } = await supabase.auth.getUser();
-    const user = userRes.user;
-    if (!user || !program) return;
+    if (!program) return;
     const fd: any = { head: headValues, members: memberValues };
     // Merge current into head or members depending on step
     if (step === FlowStep.FORM_HEAD) fd.head = { ...headValues, ...current };
     if (step === FlowStep.FORM_MEMBER) fd.members = [...memberValues, current];
 
-    if (!draftEnrollmentId) {
-      const { data, error } = await supabase.from('enrollments').insert({
-        user_id: user.id,
-        program_id: program.id,
-        is_family: type === 'family',
-        family_size: type === 'family' ? familySize : null,
-        status: 'draft',
-        payment_status: 'unpaid',
-        form_data: fd,
-      }).select('id').single();
-      if (!error && data) setDraftEnrollmentId(data.id);
-    } else {
-      await supabase.from('enrollments').update({
-        is_family: type === 'family',
-        family_size: type === 'family' ? familySize : null,
-        status: 'draft',
-        payment_status: 'unpaid',
-        form_data: fd,
-      }).eq('id', draftEnrollmentId);
+    try {
+      const sessionRes = await supabase.auth.getSession();
+      const token = sessionRes.data.session?.access_token;
+      const res = await fetch('/api/drafts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          program_id: program.id,
+          registration_type: type === 'family' ? 'family_head' : 'individual',
+          form_data: fd,
+          family_size: type === 'family' ? familySize : undefined,
+        }),
+      });
+      if (res.ok) {
+        const { draft } = await res.json();
+        if (draft?.id) setDraftEnrollmentId(draft.id);
+        setMessage('Draft saved. You can continue later from your dashboard.');
+      } else {
+        setMessage('Failed to save draft.');
+      }
+    } catch {
+      setMessage('Failed to save draft.');
     }
-    setMessage('Draft saved. You can continue later from your dashboard.');
   };
 
   const submitForm = async (vals: Record<string, unknown>) => {
     setMessage("");
     // Persist in memory
     setHeadValues({ ...headValues, ...vals });
-    // Optionally persist submissions to enrollments.form_data as draft
-    await saveDraft(vals);
+    // Do NOT auto-submit to admin; only save draft on explicit action
     if (type === 'family' && remainingMembers > 0) {
       setRemainingMembers(remainingMembers - 1);
       setStep(FlowStep.FORM_MEMBER);
       return;
     }
-    // If no remaining members, proceed to payment
-    await createEnrollmentAndPay();
+    // If no remaining members, proceed to payment guide after saving draft
+    await proceedToPayment();
   };
 
   const submitMemberForm = async (vals: Record<string, unknown>) => {
     setMessage("");
     setMemberValues(prev => [...prev, vals]);
-    await saveDraft(vals);
     if (remainingMembers - 1 > 0) {
       setRemainingMembers(remainingMembers - 1);
       setStep(FlowStep.FORM_MEMBER);
       return;
     }
-    await createEnrollmentAndPay();
+    await proceedToPayment();
   };
 
-  const createEnrollmentAndPay = async () => {
+  const proceedToPayment = async () => {
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
     if (!user) { setMessage('Please log in to continue.'); return; }
     if (!program) { setMessage('Program not found.'); return; }
     if (!selectedPlan) { setMessage('Plan not available.'); return; }
 
-    const payload: any = {
-      user_id: user.id,
-      program_id: program.id,
-      is_family: type === 'family',
-      family_size: type === 'family' ? familySize : null,
-      status: 'submitted', // lock user editing after submission
-      payment_status: 'unpaid',
-      plan_id: selectedPlan.id,
-      duration_months: selectedPlan.duration_months,
-      form_data: { head: headValues, members: memberValues },
-    };
-
-    let createdId = draftEnrollmentId;
-    if (!draftEnrollmentId) {
-      const { data, error } = await supabase.from('enrollments').insert(payload).select('id').single();
-      if (error || !data) { setMessage(error?.message || 'Failed to create enrollment'); return; }
-      createdId = data.id;
-      setDraftEnrollmentId(createdId);
-    } else {
-      const { error } = await supabase.from('enrollments').update(payload).eq('id', draftEnrollmentId);
-      if (error) { setMessage(error.message); return; }
-    }
-
+    // Save current progress as a draft via API (no auto submission)
     try {
-      FlutterwaveCheckout({
-        public_key: process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY,
-        tx_ref: String(createdId),
-        amount: selectedPlan.price,
-        currency: selectedPlan.currency || 'NGN',
-        redirect_url: `/payment-success?ref=${createdId}`,
-        customer: { email: user.email, name: user.email?.split('@')[0] || 'Student' },
-        customizations: { title: 'Mubeen Academy', description: `Payment for ${program.title}`, logo: '/logo.png' },
-        onclose: () => {}
+      const sessionRes = await supabase.auth.getSession();
+      const token = sessionRes.data.session?.access_token;
+      const res = await fetch('/api/drafts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          program_id: program.id,
+          registration_type: type === 'family' ? 'family_head' : 'individual',
+          form_data: { head: headValues, members: memberValues },
+          family_size: type === 'family' ? familySize : undefined,
+          // Optional: store selected plan info in draft_data as well
+        }),
       });
-      setMessage('Redirecting to payment...');
-    } catch (e) {
-      setMessage('Unable to initiate payment.');
+      if (!res.ok) {
+        setMessage('Failed to save your progress. Please try again.');
+        return;
+      }
+      const { draft } = await res.json();
+      const draftId = draft?.id;
+      if (!draftId) {
+        setMessage('Unable to create draft.');
+        return;
+      }
+      // Navigate to payment guide which will open Flutterwave
+      router.push(`/register/payment-guide?draft=${draftId}&plan=${selectedPlan.id}`);
+    } catch (e: any) {
+      setMessage(e?.message || 'Failed to save draft.');
     }
   };
 
@@ -301,8 +297,8 @@ export const DynamicRegistrationFlow: React.FC<{ programSlug?: string }> = ({ pr
             <div className="flex items-center gap-3">
               <button className={type === 'individual' ? 'btn-primary' : 'btn-outline'} onClick={() => setType('individual')}>Individual</button>
               <button className={type === 'family' ? 'btn-primary' : 'btn-outline'} onClick={() => setType('family')}>Family</button>
-              {type === 'family' && (
-                <select value={familySize} onChange={(e) => setFamilySize(Number(e.target.value))} className="select w-40">
+{type === 'family' && (
+                <select aria-label="Family size" value={familySize} onChange={(e) => setFamilySize(Number(e.target.value))} className="select w-40">
                   {familySizeOptions.length > 0 ? (
                     familySizeOptions.map(n => <option key={n} value={n}>Family of {n}</option>)
                   ) : (

@@ -16,18 +16,18 @@ export default function AuthCallbackPage() {
         const user = userData.user;
         if (user) {
           const meta: Record<string, unknown> = user.user_metadata || {} as Record<string, unknown>;
-          const full_name = (meta['full_name'] as string) || null;
+          const full_name = (meta['full_name'] as string) || (meta['name'] as string) || null;
           const phone = (meta['phone'] as string) || null;
           const country = (meta['country'] as string) || null;
-          if (full_name || phone || country) {
-            await supabase.from('profiles').update({ full_name, phone, country }).eq('id', user.id);
-          }
+          const email = user.email || null;
+          await supabase.from('profiles').update({ full_name, phone, country, email }).eq('id', user.id);
         }
         // Redirect by role if admin
         let dest = "/dashboard";
         if (user) {
           const { data: prof } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-          if ((prof as { role?: string } | null)?.role === 'admin') dest = "/admin";
+          const role = (prof as { role?: string } | null)?.role;
+          if (role === 'admin' || role === 'super_admin') dest = "/admin";
         }
         setMessage("Email verified! Redirecting...");
         setTimeout(() => { window.location.href = dest; }, 1000);

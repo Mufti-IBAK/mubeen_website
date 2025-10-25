@@ -218,7 +218,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Link 
-                        href={`/enroll?program=${(draft as any).program_slug ?? draft.program_id}`} 
+                        href={`/register?program=${(draft as any).program_slug ?? draft.program_id}`} 
                         className="btn-primary"
                         onClick={refreshDrafts}
                       >
@@ -275,15 +275,14 @@ function ProfileUpdateForm({ initial, onUpdated }: { initial: { full_name?: stri
   const [msg, setMsg] = useState('');
   const lastUpdated = initial.updated_at ? new Date(initial.updated_at).getTime() : 0;
   const canUpdate = lastUpdated === 0 || (Date.now() - lastUpdated) > (30 * 24 * 60 * 60 * 1000);
-  const nextAllowed = lastUpdated ? new Date(lastUpdated + 30*24*60*60*1000).toLocaleString() : null;
+      const nextAllowed = null;
 
-  const save = async (e: React.FormEvent) => {
+    const save = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true); setMsg('');
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
     if (user) {
-      if (!canUpdate) { setMsg(`You can update your profile after ${nextAllowed}`); setSaving(false); return; }
       const { error } = await supabase.from('profiles').update({ full_name: fullName, phone, country }).eq('id', user.id);
       if (error) {
         setMsg(error.message);
@@ -302,8 +301,7 @@ function ProfileUpdateForm({ initial, onUpdated }: { initial: { full_name?: stri
       <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full Name" className="input" />
       <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className="input" />
       <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Country" className="input" />
-      <button disabled={saving || !canUpdate} className="btn-primary">{saving ? 'Saving…' : 'Save Profile'}</button>
-      {!canUpdate && nextAllowed && <p className="text-sm text-[hsl(var(--muted-foreground))]">You can update again after {nextAllowed}</p>}
+      <button disabled={saving} className="btn-primary">{saving ? 'Saving…' : 'Save Profile'}</button>
       {msg && <p className="text-sm text-[hsl(var(--muted-foreground))]">{msg}</p>}
     </form>
   );

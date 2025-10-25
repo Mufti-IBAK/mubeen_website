@@ -155,9 +155,11 @@ export default function RegistrationsClient() {
   const setPayment = async (id: number, payment_status: string, opts?: { transaction_id?: string; amount?: number }) => {
     if (payment_status === 'refunded') {
       // Call secure refund route
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
       const res = await fetch('/api/admin/refund', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
         body: JSON.stringify({ enrollment_id: id, transaction_id: opts?.transaction_id, amount: opts?.amount }),
       });
       if (!res.ok) {
@@ -264,11 +266,11 @@ export default function RegistrationsClient() {
       <div className="card">
         <div className="card-body grid grid-cols-1 md:grid-cols-5 gap-3">
           <input className="input" placeholder="Search name or email" value={search} onChange={(e) => setSearch(e.target.value)} />
-          <select className="input" value={filterProgram} onChange={(e) => setFilterProgram(e.target.value === 'all' ? 'all' : Number(e.target.value))}>
+          <select className="input" aria-label="Filter by program" value={filterProgram} onChange={(e) => setFilterProgram(e.target.value === 'all' ? 'all' : Number(e.target.value))}>
             <option value="all">All programs</option>
             {programs.map(p => (<option key={p.id} value={p.id}>{p.title}</option>))}
           </select>
-          <select className="input" value={filterPayment} onChange={(e) => setFilterPayment(e.target.value as any)}>
+          <select className="input" aria-label="Filter by payment status" value={filterPayment} onChange={(e) => setFilterPayment(e.target.value as any)}>
             <option value="all">All payment statuses</option>
             <option value="paid">Paid</option>
             <option value="pending">Pending</option>
@@ -290,7 +292,7 @@ export default function RegistrationsClient() {
             <button className="btn-outline" onClick={bulkMarkPaid}>Mark Paid</button>
             <button className="btn-outline" onClick={bulkRefund}>Refund</button>
             <div className="flex items-center gap-2">
-              <select className="input" value={bulkTargetProgram} onChange={(e) => setBulkTargetProgram(e.target.value === '' ? '' : Number(e.target.value))}>
+              <select className="input" aria-label="Bulk transfer target program" value={bulkTargetProgram} onChange={(e) => setBulkTargetProgram(e.target.value === '' ? '' : Number(e.target.value))}>
                 <option value="">Transfer to…</option>
                 {programs.map(p => (<option key={p.id} value={p.id}>{p.title}</option>))}
               </select>
@@ -334,9 +336,9 @@ export default function RegistrationsClient() {
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       {isFamily ? <FiUsers className="h-4 w-4 text-blue-600 flex-shrink-0" /> : <FiUser className="h-4 w-4 text-gray-400 flex-shrink-0" />}
-                      <h3 className="font-semibold">{profile?.full_name || 'Unknown User'}</h3>
+                      <h3 className="font-semibold">{profile?.full_name || profile?.email || 'Unknown User'}</h3>
                     </div>
-                    <p className="text-sm text-[hsl(var(--muted-foreground))] ml-6">{profile?.email}</p>
+                    <p className="text-sm text-[hsl(var(--muted-foreground))] ml-6">{profile?.email || '—'}</p>
                     {isFamily && (
                       <p className="text-xs text-blue-600 ml-6 mt-1">Family Head - Payment covers all members</p>
                     )}
@@ -380,7 +382,7 @@ export default function RegistrationsClient() {
                   </button>
                   <button className="btn-destructive" onClick={() => remove(e.id)}>Remove</button>
                   <div className="flex items-center gap-2">
-                    <select className="input" onChange={(ev) => transfer(e.id, Number(ev.target.value))} defaultValue="">
+                    <select className="input" aria-label="Transfer this registration to another program" onChange={(ev) => transfer(e.id, Number(ev.target.value))} defaultValue="">
                       <option value="" disabled>Transfer to…</option>
                       {programs.filter(p => p.id !== e.program_id).map(p => (
                         <option key={p.id} value={p.id}>{p.title}</option>

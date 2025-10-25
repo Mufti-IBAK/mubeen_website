@@ -138,7 +138,7 @@ export const FormRenderer: React.FC<RendererProps> = ({ schema, onSubmit, onSave
           )}
         </div>
         {atEnd ? (
-          <button type="submit" className="btn-primary">Submit</button>
+          <button type="submit" className="btn-primary">Proceed to payment</button>
         ) : (
           <button type="button" onClick={() => setIdx((v) => Math.min(sections.length - 1, v + 1))} className="btn-primary">Next</button>
         )}

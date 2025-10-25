@@ -27,7 +27,6 @@ export interface DraftData {
 export interface UseDraftRegistrationOptions {
   programId: string;
   registrationType: 'individual' | 'family_head' | 'family_member';
-  autoSaveDelay?: number; // milliseconds
   onSaveSuccess?: () => void;
   onSaveError?: (error: string) => void;
 }
@@ -35,7 +34,6 @@ export interface UseDraftRegistrationOptions {
 export function useDraftRegistration({
   programId,
   registrationType,
-  autoSaveDelay = 3000, // 3 seconds
   onSaveSuccess,
   onSaveError,
 }: UseDraftRegistrationOptions) {
@@ -53,13 +51,6 @@ export function useDraftRegistration({
   useEffect(() => {
     loadExistingDraft();
   }, [programId, registrationType]);
-
-  // Auto-save when form data changes
-  useEffect(() => {
-    if (hasChangesRef.current) {
-      scheduleAutoSave();
-    }
-  }, [formData]);
 
 
   const loadExistingDraft = async () => {
@@ -95,17 +86,8 @@ export function useDraftRegistration({
     }
   };
 
-  const scheduleAutoSave = () => {
-    // Clear existing timeout
-    if (autoSaveTimeoutRef.current) {
-      clearTimeout(autoSaveTimeoutRef.current);
-    }
-
-    // Schedule new auto-save
-    autoSaveTimeoutRef.current = setTimeout(() => {
-      saveDraft();
-    }, autoSaveDelay);
-  };
+  // Auto-save disabled per product requirements; drafts are only saved when user clicks Save.
+  const scheduleAutoSave = () => {};
 
   const saveDraft = async (showToast = false) => {
     if (isSaving || Object.keys(formData).length === 0) return;
@@ -254,18 +236,7 @@ export function useDraftRegistration({
     };
   }, []);
 
-  // Save before page unload if there are unsaved changes
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (hasChangesRef.current && !isSaving) {
-        // Fire and forget - browser will handle this
-        saveDraft();
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, []);
+  // Disabled: no auto-save on unload per product requirements
 
   return {
     // State

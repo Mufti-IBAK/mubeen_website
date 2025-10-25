@@ -5,7 +5,7 @@ import { NextRequest, NextResponse } from "next/server";
 // Behavior:
 // - If transaction_id provided: attempts real refund via Flutterwave API, then updates payment_status='refunded'.
 // - If not provided: falls back to updating payment_status='refunded' only.
-// NOTE: You should lock this route to admins using your preferred auth strategy.
+// NOTE: This route enforces admin (admin or super_admin) via Supabase auth.
 
 const FLW_URL = "https://api.flutterwave.com/v3";
 
@@ -40,26 +40,29 @@ import { cookies } from 'next/headers';
 
 export async function POST(req: NextRequest) {
   try {
-    // Admin auth check using Supabase REST and cookies
-    const cookieStore = await cookies();
-    const accessToken = cookieStore.get('sb:token')?.value || cookieStore.get('sb-access-token')?.value;
     const supabaseUrl = getEnv('NEXT_PUBLIC_SUPABASE_URL');
     const anonKey = getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', process.env.SUPABASE_ANON_KEY);
     const service = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
     if (!service) throw new Error('Missing service role key');
 
-    if (!accessToken) {
-      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
+    // Resolve access token from Authorization header or cookies
+    const authHeader = req.headers.get('authorization') || req.headers.get('Authorization');
+    let accessToken: string | undefined = undefined;
+    if (authHeader && /^Bearer\s+/i.test(authHeader)) {
+      accessToken = authHeader.replace(/^Bearer\s+/i, '');
     }
+    if (!accessToken) {
+      const cookieStore = await cookies();
+      accessToken = cookieStore.get('sb-access-token')?.value || cookieStore.get('sb:token')?.value || undefined;
+    }
+    if (!accessToken) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
 
     // Get user by access token
     const userRes = await fetch(`${supabaseUrl}/auth/v1/user`, {
       headers: { apikey: anonKey, Authorization: `Bearer ${accessToken}` },
       cache: 'no-store',
     });
-    if (!userRes.ok) {
-      return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
-    }
+    if (!userRes.ok) return NextResponse.json({ error: 'unauthorized' }, { status: 401 });
     const user = await userRes.json();
 
     // Check admin role via profiles
@@ -70,7 +73,7 @@ export async function POST(req: NextRequest) {
     if (!profRes.ok) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     const prof = await profRes.json();
     const role = prof?.[0]?.role;
-    if (role !== 'admin') return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+    if (!(role === 'admin' || role === 'super_admin')) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
 
     const body = await req.json();
     const enrollment_id = Number(body?.enrollment_id);

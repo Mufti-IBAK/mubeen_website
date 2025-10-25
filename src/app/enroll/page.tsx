@@ -33,7 +33,6 @@ export default function EnrollPage() {
   const draftHook = useDraftRegistration({
     programId: program?.id?.toString() || '',
     registrationType: selectedType === 'family' ? 'family_head' : 'individual',
-    autoSaveDelay: 5000, // 5 seconds
   });
 
   // Get program slug from URL
@@ -266,73 +265,30 @@ export default function EnrollPage() {
 
     try {
       setLoading(true);
-      setMessage('Processing registration...');
+      setMessage('Saving your progress...');
 
-      // Use existing draft row if present; otherwise insert a new enrollment
-      let enrollmentId: number | null = null;
-      if (draftHook.draftId) {
-        const draftIdNum = Number(draftHook.draftId);
-        const { error: updErr } = await supabase
-          .from('enrollments')
-          .update({
-            user_id: user.id,
-            program_id: program.id,
-            is_family: selectedType === 'family',
-            family_size: selectedType === 'family' ? familySize : null,
-            status: 'submitted',
-            payment_status: 'unpaid',
-            plan_id: selectedPlan.id,
-            duration_months: selectedPlan.duration_months,
-            form_data: { head: headData, members: memberData },
-            is_draft: false,
-            last_edited_at: new Date().toISOString(),
-          })
-          .eq('id', draftIdNum);
-        if (updErr) throw updErr;
-        enrollmentId = draftIdNum;
-      } else {
-        const { data: enrollment, error: enrollError } = await supabase
-          .from('enrollments')
-          .insert({
-            user_id: user.id,
-            program_id: program.id,
-            is_family: selectedType === 'family',
-            family_size: selectedType === 'family' ? familySize : null,
-            status: 'submitted',
-            payment_status: 'unpaid',
-            plan_id: selectedPlan.id,
-            duration_months: selectedPlan.duration_months,
-            form_data: { head: headData, members: memberData }
-          })
-          .select('id')
-          .single();
-        if (enrollError || !enrollment) {
-          throw new Error(enrollError?.message || 'Failed to create enrollment');
-        }
-        enrollmentId = enrollment.id as number;
-      }
-
-      // Initiate payment
-      setMessage('Redirecting to payment...');
-      FlutterwaveCheckout({
-        public_key: process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY,
-        tx_ref: String(enrollmentId),
-        amount: selectedPlan.price,
-        currency: selectedPlan.currency || 'NGN',
-        redirect_url: `/payment-success?ref=${enrollmentId}`,
-        customer: { 
-          email: user.email, 
-          name: user.email?.split('@')[0] || 'Student' 
+      // Save as draft via API and redirect to payment guide
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+      const res = await fetch('/api/drafts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        customizations: { 
-          title: 'Mubeen Academy', 
-          description: `Payment for ${program.title}`, 
-          logo: '/logo.png' 
-        },
-        onclose: () => {
-          setMessage('Payment cancelled');
-        }
+        body: JSON.stringify({
+          program_id: program.id,
+          registration_type: selectedType === 'family' ? 'family_head' : 'individual',
+          form_data: { head: headData, members: memberData },
+          family_size: selectedType === 'family' ? familySize : undefined,
+        }),
       });
+      if (!res.ok) throw new Error('Failed to save draft');
+      const { draft } = await res.json();
+      const draftId = draft?.id;
+      if (!draftId) throw new Error('Invalid draft');
+      setMessage('Redirecting to payment...');
+      window.location.href = `/register/payment-guide?draft=${draftId}&plan=${selectedPlan.id}`;
 
     } catch (error: any) {
       console.error('Registration error:', error);

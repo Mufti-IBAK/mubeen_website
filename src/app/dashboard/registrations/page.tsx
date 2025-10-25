@@ -50,8 +50,9 @@ export default function DashboardRegistrationsPage() {
       if (!user) { setLoading(false); return; }
       const { data: enr } = await supabase
         .from('enrollments')
-        .select('id, program_id, status, payment_status, created_at, duration_months, plan_id, amount, currency, classroom_link, defer_active, completed_at')
+        .select('id, program_id, status, payment_status, created_at, duration_months, plan_id, amount, currency, classroom_link, defer_active, completed_at, is_draft')
         .eq('user_id', user.id)
+        .eq('is_draft', false)
         .order('created_at', { ascending: false });
       const list = (enr as Enrollment[]) || [];
       setEnrollments(list);
@@ -208,14 +209,14 @@ export default function DashboardRegistrationsPage() {
         <div className="card">
           <div className="card-body flex flex-wrap items-center gap-3">
             <h1 className="text-2xl font-bold mr-auto">My Registrations</h1>
-            <select className="input w-40" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
+            <select className="input w-40" aria-label="Filter by status" value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as any)}>
               <option value="all">All statuses</option>
               <option value="draft">In Progress</option>
               <option value="submitted">Submitted</option>
               <option value="registered">Registered</option>
               <option value="updated">Updated</option>
             </select>
-            <select className="input w-40" value={filterPayment} onChange={(e) => setFilterPayment(e.target.value as any)}>
+            <select className="input w-40" aria-label="Filter by payment" value={filterPayment} onChange={(e) => setFilterPayment(e.target.value as any)}>
               <option value="all">All payments</option>
               <option value="unpaid">Unpaid</option>
               <option value="paid">Paid</option>

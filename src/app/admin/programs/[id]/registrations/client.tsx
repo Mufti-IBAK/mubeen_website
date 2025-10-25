@@ -17,6 +17,7 @@ interface Enrollment {
   defer_active?: boolean | null;
   completed_at?: string | null;
   created_at: string;
+  is_draft?: boolean | null;
 }
 interface Profile { id: string; full_name: string | null; email: string | null; }
 interface Program { id: number; title: string; }
@@ -37,7 +38,7 @@ export default function RegistrationsByProgramClient({ programId }: { programId:
 
     const { data: enr } = await supabase
       .from('enrollments')
-      .select('id,user_id,program_id,status,payment_status,amount,currency,transaction_id,form_data,classroom_link,defer_active,completed_at,created_at')
+      .select('id,user_id,program_id,status,payment_status,amount,currency,transaction_id,form_data,classroom_link,defer_active,completed_at,created_at,is_draft')
       .eq('program_id', programId)
       .order('created_at', { ascending: false });
     const list = (enr as Enrollment[]) || [];
@@ -81,8 +82,10 @@ export default function RegistrationsByProgramClient({ programId }: { programId:
       const tx = (rSel.data as any)?.transaction_id as string | null;
       const amt = (rSel.data as any)?.amount as number | null;
       if (tx) {
-        const res = await fetch('/api/admin/refund', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enrollment_id: id, transaction_id: tx, amount: amt || undefined }) });
-        if (!res.ok) { alert('Refund failed'); return; }
+        const { data: session } = await supabase.auth.getSession();
+        const token = session.session?.access_token;
+        const res = await fetch('/api/admin/refund', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) }, body: JSON.stringify({ enrollment_id: id, transaction_id: tx, amount: amt || undefined }) });
+        if (!res.ok) { const msg = await res.text().catch(() => 'Refund failed'); alert(msg || 'Refund failed'); return; }
       } else {
         await supabase.from('enrollments').update({ payment_status: 'refunded' }).eq('id', id);
       }
@@ -133,7 +136,7 @@ export default function RegistrationsByProgramClient({ programId }: { programId:
       <div className="card">
         <div className="card-body flex flex-col md:flex-row md:items-center gap-3">
           <h2 className="text-lg font-semibold flex-1">{program?.title || `Program ${programId}`}</h2>
-          <input className="input md:w-64" placeholder="Search name or email" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input className="input md:w-64" aria-label="Search name or email" placeholder="Search name or email" value={search} onChange={(e) => setSearch(e.target.value)} />
           <label className="inline-flex items-center gap-2 text-sm">
             <input type="checkbox" checked={emailOnPayment} onChange={(e) => setEmailOnPayment(e.target.checked)} />
             <span>Email student on Mark Paid</span>
@@ -153,8 +156,8 @@ export default function RegistrationsByProgramClient({ programId }: { programId:
               <div key={e.id} className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm p-4 flex flex-col gap-3">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h3 className="font-semibold">{profile?.full_name || 'Unknown User'}</h3>
-                    <p className="text-sm text-[hsl(var(--muted-foreground))]">{profile?.email}</p>
+                    <h3 className="font-semibold">{profile?.full_name || profile?.email || 'Unknown User'}</h3>
+                    <p className="text-sm text-[hsl(var(--muted-foreground))]">{profile?.email || '—'}</p>
                   </div>
                   <span className={`badge ${e.payment_status === 'paid' ? 'bg-green-100 text-green-700' : e.payment_status === 'refunded' ? 'bg-yellow-100 text-yellow-700' : 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))]'}`}>
                     {e.payment_status || 'pending'}
@@ -162,6 +165,9 @@ export default function RegistrationsByProgramClient({ programId }: { programId:
                 </div>
                 <div className="text-sm text-[hsl(var(--muted-foreground))]">
                   <p><span className="font-medium text-[hsl(var(--foreground))]">Registered:</span> {new Date(e.created_at).toLocaleString()}</p>
+                  {e.is_draft ? (
+                    <p className="text-xs mt-1"><span className="inline-block px-2 py-0.5 rounded bg-amber-100 text-amber-700">Incomplete registration</span></p>
+                  ) : null}
                   <p><span className="font-medium text-[hsl(var(--foreground))]">Amount:</span> {e.currency || 'NGN'} {e.amount ?? '-'}</p>
                   {e.transaction_id && <p><span className="font-medium text-[hsl(var(--foreground))]">Transaction:</span> {e.transaction_id}</p>}
                   {e.defer_active ? <p className="text-xs mt-1"><span className="inline-block px-2 py-0.5 rounded bg-yellow-100 text-yellow-700">Deferred</span></p> : null}

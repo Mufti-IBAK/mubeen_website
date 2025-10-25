@@ -37,13 +37,20 @@ export default function LoginPage() {
       if (mode === "login") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        // Decide destination by role
+        // Update profile metadata to ensure name/email show everywhere
         const { data: userData } = await supabase.auth.getUser();
         const user = userData.user;
+        if (user) {
+          const meta: Record<string, unknown> = user.user_metadata || {} as Record<string, unknown>;
+          const full_name = (meta['full_name'] as string) || (meta['name'] as string) || null;
+          await supabase.from('profiles').update({ email: user.email, full_name }).eq('id', user.id);
+        }
+        // Decide destination by role
         let dest = "/dashboard";
         if (user) {
           const { data: prof } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-          if ((prof as { role?: string } | null)?.role === 'admin') dest = "/admin";
+          const role = (prof as { role?: string } | null)?.role;
+          if (role === 'admin' || role === 'super_admin') dest = "/admin";
         }
         setMessage("Logged in. Redirecting...");
         const to = nextDest || dest;
@@ -89,34 +96,34 @@ export default function LoginPage() {
             {mode === 'signup' && (
               <>
                 <div>
-                  <label className="block text-sm mb-1">Full Name</label>
-                  <input value={fullName} onChange={(e) => setFullName(e.target.value)} required className="input" />
+                  <label htmlFor="fullName" className="block text-sm mb-1">Full Name</label>
+                  <input id="fullName" name="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required className="input" />
                 </div>
                 <div>
-                  <label className="block text-sm mb-1">Phone</label>
-                  <input value={phone} onChange={(e) => setPhone(e.target.value)} className="input" />
+                  <label htmlFor="phone" className="block text-sm mb-1">Phone</label>
+                  <input id="phone" name="phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="input" />
                 </div>
                 <div>
-                  <label className="block text-sm mb-1">Country</label>
-                  <input value={country} onChange={(e) => setCountry(e.target.value)} className="input" />
+                  <label htmlFor="country" className="block text-sm mb-1">Country</label>
+                  <input id="country" name="country" value={country} onChange={(e) => setCountry(e.target.value)} className="input" />
                 </div>
               </>
             )}
             <div>
-              <label className="block text-sm mb-1">Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="input" />
+              <label htmlFor="email" className="block text-sm mb-1">Email</label>
+              <input id="email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="input" />
             </div>
             <div>
-              <label className="block text-sm mb-1">Password</label>
+              <label htmlFor="password" className="block text-sm mb-1">Password</label>
               <div className="relative">
-                <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required className="input pr-10" />
+                <input id="password" name="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required className="input pr-10" />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-[hsl(var(--muted-foreground))]">{showPassword ? 'Hide' : 'Show'}</button>
               </div>
             </div>
             {mode === 'signup' && (
               <div>
-                <label className="block text-sm mb-1">Confirm Password</label>
-                <input type={showPassword ? 'text' : 'password'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="input" />
+                <label htmlFor="confirmPassword" className="block text-sm mb-1">Confirm Password</label>
+                <input id="confirmPassword" name="confirmPassword" type={showPassword ? 'text' : 'password'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="input" />
               </div>
             )}
             <button type="submit" disabled={loading} className="btn-primary w-full">

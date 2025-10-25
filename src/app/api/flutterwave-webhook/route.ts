@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseClient';
+import { createClient } from '@supabase/supabase-js';
 
 export async function POST(req: NextRequest) {
   try {
@@ -25,28 +25,54 @@ export async function POST(req: NextRequest) {
 
     // We are only interested in successful charge events
     if (eventData.event === "charge.completed" && eventData.data.status === "successful") {
-      const { tx_ref } = eventData.data; // tx_ref is the transaction reference (we use it as enrollment id)
+      const rawRef: string = eventData.data.tx_ref;
       const transaction_id = eventData.data?.id || eventData.data?.flw_ref || eventData.data?.tx_id || null;
+      const paidAmount = Number(eventData.data?.amount) || null;
+      const paidCurrency = (eventData.data?.currency as string) || null;
 
-      // 3. UPDATE THE DATABASE
-      // Try to update enrollments first (new flow), fallback to registrations (legacy)
-      let { error: updateError } = await supabase
+      const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+      const service = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+      const admin = createClient(url, service);
+
+      // Support both legacy numeric refs and new draft-<id> refs
+      let idStr = rawRef || '';
+      if (!idStr) {
+        console.warn('Missing tx_ref in webhook payload');
+      }
+      if (idStr.startsWith('draft-')) idStr = idStr.replace('draft-', '');
+      const enrollmentId = Number(idStr);
+
+      // Fetch current row to merge draft_data -> form_data if needed
+      const { data: row, error: selErr } = await admin
         .from('enrollments')
-        .update({ payment_status: 'paid', transaction_id })
-        .eq('id', tx_ref);
+        .select('id,is_draft,draft_data,form_data')
+        .eq('id', enrollmentId)
+        .maybeSingle();
+      if (selErr) {
+        console.error('Enrollments select error', selErr);
+      }
 
-      if (updateError) {
-        const { error: legacyError } = await supabase
-          .from('registrations')
-          .update({ payment_status: 'paid' })
-          .eq('id', tx_ref);
-        if (legacyError) {
-          console.error(`Failed to update payment status for ref: ${tx_ref}`, legacyError);
-        } else {
-          console.log(`Payment status updated (legacy registrations) for ref: ${tx_ref}`);
-        }
+      const form_data = (row?.draft_data as Record<string, unknown> | null) || row?.form_data || {};
+
+      const { error: updErr } = await admin
+        .from('enrollments')
+        .update({
+          payment_status: 'paid',
+          transaction_id,
+          amount: paidAmount,
+          currency: paidCurrency,
+          is_draft: false,
+          status: 'registered',
+          form_data,
+          draft_data: null,
+          last_edited_at: new Date().toISOString(),
+        })
+        .eq('id', enrollmentId);
+
+      if (updErr) {
+        console.error('Failed to finalize enrollment on webhook', updErr);
       } else {
-        console.log(`Payment status updated (enrollments) for ref: ${tx_ref}`);
+        console.log(`Finalized enrollment ${enrollmentId} from webhook`);
       }
     }
     
