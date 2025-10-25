@@ -281,6 +281,7 @@ export default function EnrollPage() {
           registration_type: selectedType === 'family' ? 'family_head' : 'individual',
           form_data: { head: headData, members: memberData },
           family_size: selectedType === 'family' ? familySize : undefined,
+          plan_id: selectedPlan?.id,
         }),
       });
       if (!res.ok) throw new Error('Failed to save draft');

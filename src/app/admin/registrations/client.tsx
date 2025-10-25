@@ -54,14 +54,41 @@ export default function RegistrationsClient() {
       .select('id,user_id,program_id,status,payment_status,amount,currency,transaction_id,form_data,classroom_link,defer_active,completed_at,created_at,is_family,family_size,family_group_id,registration_type')
       .order('created_at', { ascending: false });
     const list = (enr as Enrollment[]) || [];
-    setEnrollments(list);
+
+    // Also fetch drafts across all programs
+    const { data: drafts } = await supabase
+      .from('registration_drafts')
+      .select('id,user_id,program_id,registration_type,family_size,last_edited_at')
+      .order('last_edited_at', { ascending: false });
+    const draftItems: Enrollment[] = (drafts as any[] || []).map((d) => ({
+      id: -Number(d.id),
+      user_id: d.user_id,
+      program_id: d.program_id,
+      status: 'draft',
+      payment_status: 'pending',
+      amount: null,
+      currency: null,
+      transaction_id: null,
+      form_data: null,
+      classroom_link: null,
+      defer_active: null,
+      completed_at: null,
+      created_at: d.last_edited_at,
+      is_family: d.registration_type === 'family_head',
+      family_size: d.family_size,
+      is_draft: true,
+      registration_type: d.registration_type,
+    }));
+
+    const combined = [...draftItems, ...list];
+    setEnrollments(combined);
     // init classroom input state
     const inputs: Record<number, string> = {};
-    list.forEach(row => { inputs[row.id] = row.classroom_link || ''; });
+    combined.forEach(row => { inputs[row.id] = row.classroom_link || ''; });
     setClassroomInputs(inputs);
 
     // Fetch profiles for users in this batch
-    const userIds = Array.from(new Set(list.map(e => e.user_id)));
+    const userIds = Array.from(new Set(combined.map(e => e.user_id)));
     if (userIds.length) {
       const { data: profs } = await supabase
         .from('profiles')
@@ -374,15 +401,15 @@ export default function RegistrationsClient() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2 mt-1">
-                  <button className="btn-outline" onClick={() => setPayment(e.id, e.payment_status === 'paid' ? 'refunded' : 'paid', { transaction_id: e.transaction_id || undefined, amount: e.amount || undefined })}>
+                  <button className="btn-outline" onClick={() => setPayment(e.id, e.payment_status === 'paid' ? 'refunded' : 'paid', { transaction_id: e.transaction_id || undefined, amount: e.amount || undefined })} disabled={!!(e as any).is_draft}>
                     {e.payment_status === 'paid' ? 'Refund' : 'Mark Paid'}
                   </button>
-                  <button className="btn-outline" onClick={() => updateStatus(e.id, e.status === 'registered' ? 'updated' : 'registered')}>
+                  <button className="btn-outline" onClick={() => updateStatus(e.id, e.status === 'registered' ? 'updated' : 'registered')} disabled={!!(e as any).is_draft}>
                     {e.status === 'registered' ? 'Mark Updated' : 'Mark Registered'}
                   </button>
-                  <button className="btn-destructive" onClick={() => remove(e.id)}>Remove</button>
+                  <button className="btn-destructive" onClick={() => remove(e.id)} disabled={!!(e as any).is_draft}>Remove</button>
                   <div className="flex items-center gap-2">
-                    <select className="input" aria-label="Transfer this registration to another program" onChange={(ev) => transfer(e.id, Number(ev.target.value))} defaultValue="">
+                    <select className="input" onChange={(ev) => transfer(e.id, Number(ev.target.value))} defaultValue="" disabled={!!(e as any).is_draft}>
                       <option value="" disabled>Transfer to…</option>
                       {programs.filter(p => p.id !== e.program_id).map(p => (
                         <option key={p.id} value={p.id}>{p.title}</option>
@@ -390,8 +417,8 @@ export default function RegistrationsClient() {
                     </select>
                   </div>
                   <button className="btn-outline" onClick={() => openReminder(profiles[e.user_id]?.email || '', programTitle(e.program_id))}>Send reminder</button>
-                  <button className="btn-outline" onClick={() => setDeferred(e.id, !e.defer_active)}>{e.defer_active ? 'Resume' : 'Defer'}</button>
-                  <button className="btn-outline" onClick={() => markCompleted(e.id)} disabled={!!e.completed_at}>{e.completed_at ? 'Completed' : 'Mark Completed'}</button>
+                  <button className="btn-outline" onClick={() => setDeferred(e.id, !e.defer_active)} disabled={!!(e as any).is_draft}>{e.defer_active ? 'Resume' : 'Defer'}</button>
+                  <button className="btn-outline" onClick={() => markCompleted(e.id)} disabled={!!e.completed_at || !!(e as any).is_draft}>{e.completed_at ? 'Completed' : 'Mark Completed'}</button>
                 </div>
               )}
               {/* Classroom link */}

@@ -34,45 +34,68 @@ export async function POST(req: NextRequest) {
       const service = process.env.SUPABASE_SERVICE_ROLE_KEY!;
       const admin = createClient(url, service);
 
-      // Support both legacy numeric refs and new draft-<id> refs
-      let idStr = rawRef || '';
-      if (!idStr) {
-        console.warn('Missing tx_ref in webhook payload');
+      // Extract draft_id and plan_id from tx_ref or meta
+      let draftId: number | null = null;
+      let planId: number | null = null;
+      try {
+        if (typeof rawRef === 'string' && rawRef.startsWith('draft-')) {
+          // format: draft-<draftId>-plan-<planId>
+          const parts = rawRef.split('-');
+          // ['draft', '<id>', 'plan', '<planId>']
+          if (parts.length >= 4) {
+            draftId = Number(parts[1]);
+            planId = Number(parts[3]);
+          } else {
+            draftId = Number(parts[1]);
+          }
+        }
+      } catch {}
+      if (!draftId) {
+        const meta = eventData.data?.meta || {};
+        if (meta.draft_id) draftId = Number(meta.draft_id);
+        if (meta.plan_id) planId = Number(meta.plan_id);
       }
-      if (idStr.startsWith('draft-')) idStr = idStr.replace('draft-', '');
-      const enrollmentId = Number(idStr);
 
-      // Fetch current row to merge draft_data -> form_data if needed
-      const { data: row, error: selErr } = await admin
-        .from('enrollments')
-        .select('id,is_draft,draft_data,form_data')
-        .eq('id', enrollmentId)
-        .maybeSingle();
-      if (selErr) {
-        console.error('Enrollments select error', selErr);
-      }
-
-      const form_data = (row?.draft_data as Record<string, unknown> | null) || row?.form_data || {};
-
-      const { error: updErr } = await admin
-        .from('enrollments')
-        .update({
-          payment_status: 'paid',
-          transaction_id,
-          amount: paidAmount,
-          currency: paidCurrency,
-          is_draft: false,
-          status: 'registered',
-          form_data,
-          draft_data: null,
-          last_edited_at: new Date().toISOString(),
-        })
-        .eq('id', enrollmentId);
-
-      if (updErr) {
-        console.error('Failed to finalize enrollment on webhook', updErr);
+      if (!draftId) {
+        console.warn('Webhook missing draft id; aborting');
       } else {
-        console.log(`Finalized enrollment ${enrollmentId} from webhook`);
+        // Load draft
+        const { data: draft, error: dErr } = await admin
+          .from('registration_drafts')
+          .select('id,user_id,program_id,registration_type,family_size,plan_id,draft_data')
+          .eq('id', draftId)
+          .single();
+        if (dErr || !draft) {
+          console.error('Draft not found for id', draftId, dErr);
+        } else {
+          const finalPlanId = planId || (draft as any).plan_id || null;
+          let durationMonths: number | null = null;
+          if (finalPlanId) {
+            const { data: planRow } = await admin.from('program_plans').select('duration_months').eq('id', finalPlanId).maybeSingle();
+            durationMonths = (planRow as any)?.duration_months ?? null;
+          }
+          const payload: Record<string, any> = {
+            user_id: (draft as any).user_id,
+            program_id: (draft as any).program_id,
+            is_family: (draft as any).registration_type === 'family_head',
+            family_size: (draft as any).registration_type === 'family_head' ? (draft as any).family_size : null,
+            status: 'registered',
+            payment_status: 'paid',
+            plan_id: finalPlanId,
+            duration_months: durationMonths,
+            form_data: (draft as any).draft_data || {},
+            amount: paidAmount,
+            currency: paidCurrency,
+            transaction_id,
+          };
+          const { data: inserted, error: insErr } = await admin.from('enrollments').insert(payload).select('id').single();
+          if (insErr) {
+            console.error('Failed to create enrollment from draft', insErr);
+          } else {
+            await admin.from('registration_drafts').delete().eq('id', draftId);
+            console.log(`Created enrollment ${inserted?.id} from draft ${draftId}`);
+          }
+        }
       }
     }
     

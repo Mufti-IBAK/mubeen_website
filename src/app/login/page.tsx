@@ -43,7 +43,7 @@ export default function LoginPage() {
         if (user) {
           const meta: Record<string, unknown> = user.user_metadata || {} as Record<string, unknown>;
           const full_name = (meta['full_name'] as string) || (meta['name'] as string) || null;
-          await supabase.from('profiles').update({ email: user.email, full_name }).eq('id', user.id);
+          await supabase.from('profiles').upsert({ id: user.id, email: user.email, full_name }, { onConflict: 'id' });
         }
         // Decide destination by role
         let dest = "/dashboard";

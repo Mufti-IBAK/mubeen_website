@@ -42,13 +42,39 @@ export default function RegistrationsByProgramClient({ programId }: { programId:
       .eq('program_id', programId)
       .order('created_at', { ascending: false });
     const list = (enr as Enrollment[]) || [];
-    setEnrollments(list);
+
+    // Also fetch incomplete drafts from registration_drafts and merge as read-only cards
+    const { data: drafts } = await supabase
+      .from('registration_drafts')
+      .select('id,user_id,program_id,registration_type,family_size,last_edited_at')
+      .eq('program_id', programId)
+      .order('last_edited_at', { ascending: false });
+    const draftItems: Enrollment[] = (drafts as any[] || []).map((d) => ({
+      id: -Number(d.id), // negative id to avoid collision
+      user_id: d.user_id,
+      program_id: d.program_id,
+      status: 'draft',
+      payment_status: 'pending',
+      amount: null,
+      currency: null,
+      transaction_id: null,
+      form_data: null,
+      classroom_link: null,
+      defer_active: null,
+      completed_at: null,
+      created_at: d.last_edited_at,
+      is_draft: true,
+    }));
+
+    const combined = [...draftItems, ...list];
+    setEnrollments(combined);
+
     // Initialize classroom link inputs
     const inputs: Record<number, string> = {};
-    list.forEach((row) => { inputs[row.id] = row.classroom_link || ''; });
+    combined.forEach((row) => { inputs[row.id] = row.classroom_link || ''; });
     setClassroomInputs(inputs);
 
-    const userIds = Array.from(new Set(list.map(e => e.user_id)));
+    const userIds = Array.from(new Set(combined.map(e => e.user_id)));
     if (userIds.length) {
       const { data: profs } = await supabase
         .from('profiles')
@@ -187,12 +213,12 @@ export default function RegistrationsByProgramClient({ programId }: { programId:
                   </details>
                 )}
                 <div className="grid grid-cols-2 gap-2 mt-1">
-                  <button className="btn-outline" onClick={() => setPayment(e.id, e.payment_status === 'paid' ? 'refunded' : 'paid')}>
+                  <button className="btn-outline" onClick={() => setPayment(e.id, e.payment_status === 'paid' ? 'refunded' : 'paid')} disabled={!!e.is_draft}>
                     {e.payment_status === 'paid' ? 'Refund' : 'Mark Paid'}
                   </button>
-                  <button className="btn-destructive" onClick={() => { /* Add remove if desired */ }}>Remove</button>
-                  <button className="btn-outline" onClick={() => setDeferred(e.id, !e.defer_active)}>{e.defer_active ? 'Resume' : 'Defer'}</button>
-                  <button className="btn-outline" onClick={() => markCompleted(e.id)} disabled={!!e.completed_at}>{e.completed_at ? 'Completed' : 'Mark Completed'}</button>
+                  <button className="btn-outline" onClick={() => setDeferred(e.id, !e.defer_active)} disabled={!!e.is_draft}>{e.defer_active ? 'Resume' : 'Defer'}</button>
+                  <button className="btn-outline" onClick={() => markCompleted(e.id)} disabled={!!e.completed_at || !!e.is_draft}>{e.completed_at ? 'Completed' : 'Mark Completed'}</button>
+                </div>
                 </div>
               </div>
             );

@@ -179,6 +179,7 @@ export const DynamicRegistrationFlow: React.FC<{ programSlug?: string }> = ({ pr
           registration_type: type === 'family' ? 'family_head' : 'individual',
           form_data: fd,
           family_size: type === 'family' ? familySize : undefined,
+          plan_id: selectedPlan?.id,
         }),
       });
       if (res.ok) {
@@ -240,7 +241,7 @@ export const DynamicRegistrationFlow: React.FC<{ programSlug?: string }> = ({ pr
           registration_type: type === 'family' ? 'family_head' : 'individual',
           form_data: { head: headValues, members: memberValues },
           family_size: type === 'family' ? familySize : undefined,
-          // Optional: store selected plan info in draft_data as well
+          plan_id: selectedPlan?.id,
         }),
       });
       if (!res.ok) {

@@ -5,10 +5,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const saveDraftSchema = z.object({
-  program_id: z.union([z.number(), z.string()]), // numeric id (string acceptable)
+  program_id: z.union([z.number(), z.string()]),
   registration_type: z.enum(['individual', 'family_head', 'family_member']),
   form_data: z.record(z.string(), z.any()),
   family_size: z.number().optional(),
+  plan_id: z.number().optional(),
 });
 
 const finalizeDraftSchema = z.object({
@@ -49,15 +50,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ drafts: [] });
     }
 
-    // Get all draft registrations for the current user (join programs for title/slug)
-    // Use a user-scoped client for RLS queries when bearer is present
     const userScoped = bearer ? createClient(url, anon, { global: { headers: { apikey: anon, Authorization: `Bearer ${bearer}` } } }) : supabase;
 
     const { data: drafts, error } = await userScoped
-      .from('enrollments')
-      .select('id, program_id, draft_data, family_size, last_edited_at, registration_type, programs ( title, slug, image_url )')
+      .from('registration_drafts')
+      .select('id, program_id, draft_data, family_size, plan_id, last_edited_at, registration_type, programs ( title, slug, image_url )')
       .eq('user_id', user.id)
-      .eq('is_draft', true)
       .order('last_edited_at', { ascending: false });
 
     if (error) {
@@ -65,7 +63,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch drafts' }, { status: 500 });
     }
 
-    // If the view already returns the expected structure, forward as-is; otherwise coerce minimal shape
     const transformed = (drafts || []).map((d: any) => ({
       id: d.id,
       program_id: d.program_id,
@@ -76,6 +73,7 @@ export async function GET(request: NextRequest) {
       draft_data: d.draft_data ?? {},
       family_size: d.family_size ?? null,
       last_edited_at: d.last_edited_at ?? new Date().toISOString(),
+      plan_id: d.plan_id ?? null,
       user_name: '',
       user_email: ''
     }));
@@ -101,7 +99,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Resolve user (prefer bearer)
     let userId: string | null = null;
     if (bearer) {
       const tmp = createClient(url, anon);
@@ -118,27 +115,25 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const parsed = saveDraftSchema.parse(body);
     const programIdNum = Number(parsed.program_id);
-    const { registration_type, form_data, family_size } = parsed;
+    const { registration_type, form_data, family_size, plan_id } = parsed;
 
-    // Check if draft already exists for this program and user
     const { data: existingDraft } = await userScoped
-      .from('enrollments')
+      .from('registration_drafts')
       .select('id')
       .eq('user_id', userId)
       .eq('program_id', programIdNum)
       .eq('registration_type', registration_type)
-      .eq('is_draft', true)
-      .single();
+      .maybeSingle();
 
     let result;
-    
+
     if (existingDraft) {
-      // Update existing draft
       const { data, error } = await userScoped
-        .from('enrollments')
+        .from('registration_drafts')
         .update({
           draft_data: form_data,
           family_size: family_size || null,
+          plan_id: plan_id || null,
           last_edited_at: new Date().toISOString(),
         })
         .eq('id', existingDraft.id)
@@ -151,17 +146,15 @@ export async function POST(request: NextRequest) {
       }
       result = data;
     } else {
-      // Create new draft
       const { data, error } = await userScoped
-        .from('enrollments')
+        .from('registration_drafts')
         .insert({
           user_id: userId,
           program_id: programIdNum,
           registration_type,
           draft_data: form_data,
           family_size: family_size || null,
-          is_draft: true,
-          status: 'pending',
+          plan_id: plan_id || null,
           last_edited_at: new Date().toISOString(),
         })
         .select()
@@ -174,10 +167,7 @@ export async function POST(request: NextRequest) {
       result = data;
     }
 
-    return NextResponse.json({ 
-      draft: result,
-      message: 'Draft saved successfully'
-    });
+    return NextResponse.json({ draft: result, message: 'Draft saved successfully' });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid request data', details: error.issues }, { status: 400 });
@@ -188,57 +178,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PUT(request: NextRequest) {
-  try {
-    const cookieStore = await cookies();
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-    const bearer = getBearer(request);
-
-    let userScoped = null as any;
-    if (bearer) {
-      userScoped = createClient(url, anon, { global: { headers: { apikey: anon, Authorization: `Bearer ${bearer}` } } });
-    } else {
-      userScoped = createServerClient(url, anon, { cookies: { getAll() { return cookieStore.getAll(); }, setAll(cookiesToSet) { try { cookiesToSet.forEach(({name, value, options}) => cookieStore.set(name, value, options)); } catch {} } } });
-    }
-
-    const body = await request.json();
-    const parsed = finalizeDraftSchema.parse(body);
-    const draftId = Number(parsed.draft_id);
-
-    // Finalize the draft in-place: move draft_data -> form_data, is_draft -> false
-    const { data, error } = await userScoped
-      .from('enrollments')
-      .update({
-        is_draft: false,
-        status: 'submitted',
-        form_data: (await (async () => {
-          const { data: row } = await userScoped.from('enrollments').select('draft_data').eq('id', draftId).single();
-          return row?.draft_data ?? {};
-        })()),
-        last_edited_at: new Date().toISOString(),
-      })
-      .eq('id', draftId)
-.select('id')
-      .single();
-
-    if (error) {
-      console.error('Error finalizing draft:', error);
-      return NextResponse.json({ error: 'Failed to finalize registration' }, { status: 500 });
-    }
-
-    if (!data) return NextResponse.json({ error: 'Draft not found or unauthorized' }, { status: 404 });
-
-    return NextResponse.json({ 
-      registration_id: data.id,
-      message: 'Registration submitted successfully'
-    });
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid request data', details: error.issues }, { status: 400 });
-    }
-    console.error('API Error:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-  }
+  // Finalization via API is disabled to prevent creating enrollments without payment
+  return NextResponse.json({ message: 'Finalize disabled. Complete payment to submit registration.' });
 }
 
 export async function DELETE(request: NextRequest) {
@@ -256,12 +197,10 @@ export async function DELETE(request: NextRequest) {
     const draftId = searchParams.get('id');
     if (!draftId) return NextResponse.json({ error: 'Draft ID required' }, { status: 400 });
 
-    // Delete the draft; RLS will ensure ownership
     const { error } = await userScoped
-      .from('enrollments')
+      .from('registration_drafts')
       .delete()
-      .eq('id', draftId)
-      .eq('is_draft', true);
+      .eq('id', draftId);
 
     if (error) {
       console.error('Error deleting draft:', error);

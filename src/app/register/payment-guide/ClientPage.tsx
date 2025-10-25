@@ -19,10 +19,9 @@ export default function ClientPage({ draftId, planId }: { draftId: number; planI
         setError(null);
         if (!draftId || !planId) { setError('Missing payment details.'); return; }
         const { data: draftRow, error: dErr } = await supabase
-          .from('enrollments')
+          .from('registration_drafts')
           .select('program_id')
           .eq('id', draftId)
-          .eq('is_draft', true)
           .single();
         if (dErr || !draftRow) { setError('Draft not found.'); return; }
         const programId = (draftRow as any).program_id as number;
@@ -45,13 +44,16 @@ export default function ClientPage({ draftId, planId }: { draftId: number; planI
   const openFlutterwave = async () => {
     if (!draftId || !amount) return;
     try {
+      const { data: userRes } = await supabase.auth.getUser();
+      const user = userRes.user;
       FlutterwaveCheckout({
         public_key: process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY,
-        tx_ref: `draft-${draftId}`,
+        tx_ref: `draft-${draftId}-plan-${planId}`,
         amount,
         currency,
-        redirect_url: `/payment-success?ref=draft-${draftId}`,
-        customer: {},
+        redirect_url: `/payment-success?ref=draft-${draftId}-plan-${planId}`,
+        customer: { email: user?.email, name: user?.email?.split('@')[0] || 'Student' },
+        meta: { draft_id: draftId, plan_id: planId },
         customizations: { title: 'Mubeen Academy', description: `Payment for ${programTitle}`, logo: '/logo.png' },
       });
     } catch {}

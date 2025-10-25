@@ -20,7 +20,7 @@ export default function AuthCallbackPage() {
           const phone = (meta['phone'] as string) || null;
           const country = (meta['country'] as string) || null;
           const email = user.email || null;
-          await supabase.from('profiles').update({ full_name, phone, country, email }).eq('id', user.id);
+          await supabase.from('profiles').upsert({ id: user.id, full_name, phone, country, email }, { onConflict: 'id' });
         }
         // Redirect by role if admin
         let dest = "/dashboard";

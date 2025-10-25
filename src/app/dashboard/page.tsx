@@ -267,10 +267,11 @@ export default function DashboardPage() {
   );
 }
 
-function ProfileUpdateForm({ initial, onUpdated }: { initial: { full_name?: string; phone?: string; country?: string; updated_at?: string }; onUpdated: (p: any) => void }) {
+function ProfileUpdateForm({ initial, onUpdated }: { initial: { full_name?: string; phone?: string; country?: string; email?: string; updated_at?: string }; onUpdated: (p: any) => void }) {
   const [fullName, setFullName] = useState(initial.full_name || '');
   const [phone, setPhone] = useState(initial.phone || '');
   const [country, setCountry] = useState(initial.country || '');
+  const [email, setEmail] = useState((initial as any).email || '');
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const lastUpdated = initial.updated_at ? new Date(initial.updated_at).getTime() : 0;
@@ -283,7 +284,7 @@ function ProfileUpdateForm({ initial, onUpdated }: { initial: { full_name?: stri
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
     if (user) {
-      const { error } = await supabase.from('profiles').update({ full_name: fullName, phone, country }).eq('id', user.id);
+      const { error } = await supabase.from('profiles').update({ full_name: fullName, phone, country, email }).eq('id', user.id);
       if (error) {
         setMsg(error.message);
       } else {
@@ -301,6 +302,7 @@ function ProfileUpdateForm({ initial, onUpdated }: { initial: { full_name?: stri
       <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full Name" className="input" />
       <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className="input" />
       <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Country" className="input" />
+      <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="input" />
       <button disabled={saving} className="btn-primary">{saving ? 'Saving…' : 'Save Profile'}</button>
       {msg && <p className="text-sm text-[hsl(var(--muted-foreground))]">{msg}</p>}
     </form>
