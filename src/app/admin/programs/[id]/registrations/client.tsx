@@ -180,11 +180,11 @@ export default function RegistrationsByProgramClient({ programId }: { programId:
                   </details>
                 )}
                 <div className="grid grid-cols-2 gap-2 mt-1">
-                  <button className="btn-outline" onClick={() => setPayment(e.id, e.payment_status === 'paid' ? 'refunded' : 'paid')} disabled={!!e.is_draft}>
+                  <button className="btn-outline" onClick={() => setPayment(e.id, e.payment_status === 'paid' ? 'refunded' : 'paid')} disabled={e.is_draft === true}>
                     {e.payment_status === 'paid' ? 'Refund' : 'Mark Paid'}
                   </button>
-                  <button className="btn-outline" onClick={() => setDeferred(e.id, !e.defer_active)} disabled={!!e.is_draft}>{e.defer_active ? 'Resume' : 'Defer'}</button>
-                  <button className="btn-outline" onClick={() => markCompleted(e.id)} disabled={!!e.completed_at || !!e.is_draft}>{e.completed_at ? 'Completed' : 'Mark Completed'}</button>
+                  <button className="btn-outline" onClick={() => setDeferred(e.id, !e.defer_active)} disabled={e.is_draft === true}>{e.defer_active ? 'Resume' : 'Defer'}</button>
+                  <button className="btn-outline" onClick={() => markCompleted(e.id)} disabled={!!e.completed_at || e.is_draft === true}>{e.completed_at ? 'Completed' : 'Mark Completed'}</button>
                 </div>
               </div>
             );

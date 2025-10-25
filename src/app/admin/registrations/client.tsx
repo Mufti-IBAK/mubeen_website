@@ -103,7 +103,7 @@ export default function RegistrationsClient() {
     });
     
     // Convert family groups to display items
-    const familyItems: DisplayItem[] = Array.from(familyGroups.entries()).map(([_, members]) => {
+    const familyItems: DisplayItem[] = Array.from(familyGroups.entries()).map(([, members]) => {
       const head = members[0]; // Family head
       return { ...head, _isFamily: true } as DisplayItem;
     });
@@ -113,7 +113,7 @@ export default function RegistrationsClient() {
 
   const programTitle = (id: number) => programs.find(p => p.id === id)?.title || `Program ${id}`;
   const resetSelection = () => setSelected(new Set());
-  const toggleSelect = (id: number) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleSelect = (id: number) => setSelected(prev => { const n = new Set(prev); if (n.has(id)) { n.delete(id); } else { n.add(id); } return n; });
   const clearSelection = () => setSelected(new Set());
   const bulkMarkPaid = async () => {
     if (selected.size === 0) return;
@@ -361,15 +361,15 @@ export default function RegistrationsClient() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2 mt-1">
-                  <button className="btn-outline" onClick={() => setPayment(e.id, e.payment_status === 'paid' ? 'refunded' : 'paid', { transaction_id: e.transaction_id || undefined, amount: e.amount || undefined })} disabled={!!e.is_draft}>
+                  <button className="btn-outline" onClick={() => setPayment(e.id, e.payment_status === 'paid' ? 'refunded' : 'paid', { transaction_id: e.transaction_id || undefined, amount: e.amount || undefined })} disabled={e.is_draft === true}>
                     {e.payment_status === 'paid' ? 'Refund' : 'Mark Paid'}
                   </button>
-                  <button className="btn-outline" onClick={() => updateStatus(e.id, e.status === 'registered' ? 'updated' : 'registered')} disabled={!!e.is_draft}>
+                  <button className="btn-outline" onClick={() => updateStatus(e.id, e.status === 'registered' ? 'updated' : 'registered')} disabled={e.is_draft === true}>
                     {e.status === 'registered' ? 'Mark Updated' : 'Mark Registered'}
                   </button>
-                  <button className="btn-destructive" onClick={() => remove(e.id)} disabled={!!e.is_draft}>Remove</button>
+                  <button className="btn-destructive" onClick={() => remove(e.id)} disabled={e.is_draft === true}>Remove</button>
                   <div className="flex items-center gap-2">
-                    <select className="input" aria-label="Transfer this registration to another program" onChange={(ev) => transfer(e.id, Number(ev.target.value))} defaultValue="" disabled={!!e.is_draft}>
+                    <select className="input" aria-label="Transfer this registration to another program" onChange={(ev) => transfer(e.id, Number(ev.target.value))} defaultValue="" disabled={e.is_draft === true}>
                       <option value="" disabled>Transfer to…</option>
                       {programs.filter(p => p.id !== e.program_id).map(p => (
                         <option key={p.id} value={p.id}>{p.title}</option>
@@ -377,8 +377,8 @@ export default function RegistrationsClient() {
                     </select>
                   </div>
                   <button className="btn-outline" onClick={() => openReminder(profiles[e.user_id]?.email || '', programTitle(e.program_id))}>Send reminder</button>
-                  <button className="btn-outline" onClick={() => setDeferred(e.id, !e.defer_active)} disabled={!!e.is_draft}>{e.defer_active ? 'Resume' : 'Defer'}</button>
-                  <button className="btn-outline" onClick={() => markCompleted(e.id)} disabled={!!e.completed_at || !!e.is_draft}>{e.completed_at ? 'Completed' : 'Mark Completed'}</button>
+                  <button className="btn-outline" onClick={() => setDeferred(e.id, !e.defer_active)} disabled={e.is_draft === true}>{e.defer_active ? 'Resume' : 'Defer'}</button>
+                  <button className="btn-outline" onClick={() => markCompleted(e.id)} disabled={!!e.completed_at || e.is_draft === true}>{e.completed_at ? 'Completed' : 'Mark Completed'}</button>
                 </div>
               )}
               {/* Classroom link */}
