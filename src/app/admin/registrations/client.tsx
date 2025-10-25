@@ -25,6 +25,8 @@ interface Enrollment {
   family_group_id?: number | null;
   registration_type?: 'individual' | 'family_head' | 'family_member';
 }
+// Items returned to UI can include derived flags (drafts and family grouping)
+type DisplayItem = Enrollment & { is_draft?: boolean; _isFamily?: boolean };
 interface Program { id: number; title: string; }
 interface Profile { id: string; full_name: string | null; email: string | null; }
 
@@ -48,56 +50,19 @@ export default function RegistrationsClient() {
     const { data: progs } = await supabase.from('programs').select('id, title').order('title');
     setPrograms((progs as Program[]) || []);
 
-    // Fetch enrollments
-    const { data: enr } = await supabase
-      .from('enrollments')
-      .select('id,user_id,program_id,status,payment_status,amount,currency,transaction_id,form_data,classroom_link,defer_active,completed_at,created_at,is_family,family_size,family_group_id,registration_type')
-      .order('created_at', { ascending: false });
-    const list = (enr as Enrollment[]) || [];
-
-    // Also fetch drafts across all programs
-    const { data: drafts } = await supabase
-      .from('registration_drafts')
-      .select('id,user_id,program_id,registration_type,family_size,last_edited_at')
-      .order('last_edited_at', { ascending: false });
-    const draftItems: Enrollment[] = (drafts as any[] || []).map((d) => ({
-      id: -Number(d.id),
-      user_id: d.user_id,
-      program_id: d.program_id,
-      status: 'draft',
-      payment_status: 'pending',
-      amount: null,
-      currency: null,
-      transaction_id: null,
-      form_data: null,
-      classroom_link: null,
-      defer_active: null,
-      completed_at: null,
-      created_at: d.last_edited_at,
-      is_family: d.registration_type === 'family_head',
-      family_size: d.family_size,
-      is_draft: true,
-      registration_type: d.registration_type,
-    }));
-
-    const combined = [...draftItems, ...list];
-    setEnrollments(combined);
-    // init classroom input state
-    const inputs: Record<number, string> = {};
-    combined.forEach(row => { inputs[row.id] = row.classroom_link || ''; });
-    setClassroomInputs(inputs);
-
-    // Fetch profiles for users in this batch
-    const userIds = Array.from(new Set(combined.map(e => e.user_id)));
-    if (userIds.length) {
-      const { data: profs } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .in('id', userIds);
-      const map: Record<string, Profile> = {};
-      (profs as Profile[] | null)?.forEach(p => { map[p.id] = p; });
-      setProfiles(map);
+    const { data: session } = await supabase.auth.getSession();
+    const token = session.session?.access_token;
+    const res = await fetch('/api/admin/enrollments/all', { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+    if (res.ok) {
+      const json = await res.json();
+      const items: DisplayItem[] = (json.items || []) as DisplayItem[];
+      setEnrollments(items);
+      setProfiles(json.profiles || {});
+      const inputs: Record<number, string> = {};
+      items.forEach((row) => { inputs[row.id] = row.classroom_link || ''; });
+      setClassroomInputs(inputs);
     } else {
+      setEnrollments([]);
       setProfiles({});
     }
 
@@ -126,23 +91,21 @@ export default function RegistrationsClient() {
     
     filtered.forEach(enrollment => {
       if (enrollment.is_family && enrollment.registration_type === 'family_head') {
-        // This is a family head - group all family members under it
-        const groupKey = `${enrollment.user_id}-${enrollment.program_id}`;
-        if (!familyGroups.has(groupKey)) {
-          familyGroups.set(groupKey, []);
-        }
-        familyGroups.get(groupKey)!.push(enrollment);
+        // Group by user-program
+        const key = `${enrollment.user_id}-${enrollment.program_id}`;
+        const current = familyGroups.get(key) || [];
+        if (!familyGroups.has(key)) familyGroups.set(key, current);
+        current.push(enrollment);
       } else if (!enrollment.is_family || enrollment.registration_type !== 'family_member') {
-        // Individual registration or family head without proper grouping
         individuals.push(enrollment);
       }
-      // Skip family_member registrations - they'll be shown in family detail page
+      // Skip family_member registrations
     });
     
     // Convert family groups to display items
-    const familyItems = Array.from(familyGroups.entries()).map(([groupKey, members]) => {
+    const familyItems: DisplayItem[] = Array.from(familyGroups.entries()).map(([_, members]) => {
       const head = members[0]; // Family head
-      return { ...head, _isFamily: true, _familyMembers: members };
+      return { ...head, _isFamily: true } as DisplayItem;
     });
     
     return [...familyItems, ...individuals];
@@ -151,7 +114,6 @@ export default function RegistrationsClient() {
   const programTitle = (id: number) => programs.find(p => p.id === id)?.title || `Program ${id}`;
   const resetSelection = () => setSelected(new Set());
   const toggleSelect = (id: number) => setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
-  const selectAllFiltered = () => setSelected(new Set(displayItems.map(e => e.id)));
   const clearSelection = () => setSelected(new Set());
   const bulkMarkPaid = async () => {
     if (selected.size === 0) return;
@@ -258,14 +220,12 @@ export default function RegistrationsClient() {
   // Reminder modal state
   const [reminderOpen, setReminderOpen] = useState(false);
   const [reminderTo, setReminderTo] = useState<string>('');
-  const [reminderProgram, setReminderProgram] = useState<string>('');
   const [reminderSubject, setReminderSubject] = useState<string>('Complete your registration — Mubeen Academy');
   const [reminderMessage, setReminderMessage] = useState<string>('Assalamu alaykum,\n\nPlease complete your registration.');
   const [sendingReminder, setSendingReminder] = useState(false);
 
   const openReminder = (to: string, programTitle: string) => {
     setReminderTo(to);
-    setReminderProgram(programTitle);
     setReminderSubject(`Complete your registration — ${programTitle}`);
     setReminderMessage(`Assalamu alaykum,\n\nPlease complete your registration for ${programTitle}. You can continue from your dashboard:\n${location.origin}/dashboard\n\nJazakAllah Khair,\nMubeen Academy`);
     setReminderOpen(true);
@@ -277,10 +237,10 @@ export default function RegistrationsClient() {
     try {
       await fetch('/api/admin/send-email', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: reminderTo, subject: reminderSubject, html: `<pre style="font-family:inherit;white-space:pre-wrap">${reminderMessage}</pre>` })
+        body: JSON.stringify({ to: reminderTo, subject: reminderSubject, html: `<pre style=\"font-family:inherit;white-space:pre-wrap\">${reminderMessage}</pre>` })
       });
       setReminderOpen(false);
-    } catch (e) {
+    } catch {
       alert('Failed to send reminder');
     } finally {
       setSendingReminder(false);
@@ -297,7 +257,7 @@ export default function RegistrationsClient() {
             <option value="all">All programs</option>
             {programs.map(p => (<option key={p.id} value={p.id}>{p.title}</option>))}
           </select>
-          <select className="input" aria-label="Filter by payment status" value={filterPayment} onChange={(e) => setFilterPayment(e.target.value as any)}>
+          <select className="input" aria-label="Filter by payment status" value={filterPayment} onChange={(e) => setFilterPayment(e.target.value as 'all'|'paid'|'pending'|'refunded')}>
             <option value="all">All payment statuses</option>
             <option value="paid">Paid</option>
             <option value="pending">Pending</option>
@@ -338,7 +298,7 @@ export default function RegistrationsClient() {
         ) : displayItems.length === 0 ? (
           <div className="col-span-full text-[hsl(var(--muted-foreground))]">No registrations match the filters.</div>
         ) : (
-          displayItems.map((e: any) => {
+          displayItems.map((e: DisplayItem) => {
             const profile = profiles[e.user_id];
             const isFamily = e._isFamily || e.is_family;
             return (
@@ -401,15 +361,15 @@ export default function RegistrationsClient() {
                 </div>
               ) : (
                 <div className="grid grid-cols-2 gap-2 mt-1">
-                  <button className="btn-outline" onClick={() => setPayment(e.id, e.payment_status === 'paid' ? 'refunded' : 'paid', { transaction_id: e.transaction_id || undefined, amount: e.amount || undefined })} disabled={!!(e as any).is_draft}>
+                  <button className="btn-outline" onClick={() => setPayment(e.id, e.payment_status === 'paid' ? 'refunded' : 'paid', { transaction_id: e.transaction_id || undefined, amount: e.amount || undefined })} disabled={!!e.is_draft}>
                     {e.payment_status === 'paid' ? 'Refund' : 'Mark Paid'}
                   </button>
-                  <button className="btn-outline" onClick={() => updateStatus(e.id, e.status === 'registered' ? 'updated' : 'registered')} disabled={!!(e as any).is_draft}>
+                  <button className="btn-outline" onClick={() => updateStatus(e.id, e.status === 'registered' ? 'updated' : 'registered')} disabled={!!e.is_draft}>
                     {e.status === 'registered' ? 'Mark Updated' : 'Mark Registered'}
                   </button>
-                  <button className="btn-destructive" onClick={() => remove(e.id)} disabled={!!(e as any).is_draft}>Remove</button>
+                  <button className="btn-destructive" onClick={() => remove(e.id)} disabled={!!e.is_draft}>Remove</button>
                   <div className="flex items-center gap-2">
-                    <select className="input" aria-label="Transfer this registration to another program" onChange={(ev) => transfer(e.id, Number(ev.target.value))} defaultValue="" disabled={!!(e as any).is_draft}>
+                    <select className="input" aria-label="Transfer this registration to another program" onChange={(ev) => transfer(e.id, Number(ev.target.value))} defaultValue="" disabled={!!e.is_draft}>
                       <option value="" disabled>Transfer to…</option>
                       {programs.filter(p => p.id !== e.program_id).map(p => (
                         <option key={p.id} value={p.id}>{p.title}</option>
@@ -417,8 +377,8 @@ export default function RegistrationsClient() {
                     </select>
                   </div>
                   <button className="btn-outline" onClick={() => openReminder(profiles[e.user_id]?.email || '', programTitle(e.program_id))}>Send reminder</button>
-                  <button className="btn-outline" onClick={() => setDeferred(e.id, !e.defer_active)} disabled={!!(e as any).is_draft}>{e.defer_active ? 'Resume' : 'Defer'}</button>
-                  <button className="btn-outline" onClick={() => markCompleted(e.id)} disabled={!!e.completed_at || !!(e as any).is_draft}>{e.completed_at ? 'Completed' : 'Mark Completed'}</button>
+                  <button className="btn-outline" onClick={() => setDeferred(e.id, !e.defer_active)} disabled={!!e.is_draft}>{e.defer_active ? 'Resume' : 'Defer'}</button>
+                  <button className="btn-outline" onClick={() => markCompleted(e.id)} disabled={!!e.completed_at || !!e.is_draft}>{e.completed_at ? 'Completed' : 'Mark Completed'}</button>
                 </div>
               )}
               {/* Classroom link */}
@@ -446,7 +406,7 @@ export default function RegistrationsClient() {
       </div>
 
       <div className="text-xs text-[hsl(var(--muted-foreground))]">
-        Tip: refunds here flip payment_status to "refunded"; wire your Flutterwave refund API in a server route to perform real refunds.
+        Tip: refunds here flip payment_status to &quot;refunded&quot;; wire your Flutterwave refund API in a server route to perform real refunds.
       </div>
     {/* Reminder Modal */}
     {reminderOpen && (

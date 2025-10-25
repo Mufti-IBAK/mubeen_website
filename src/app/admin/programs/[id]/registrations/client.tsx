@@ -36,55 +36,22 @@ export default function RegistrationsByProgramClient({ programId }: { programId:
     const { data: prog } = await supabase.from('programs').select('id, title').eq('id', programId).single();
     setProgram((prog as Program) || null);
 
-    const { data: enr } = await supabase
-      .from('enrollments')
-      .select('id,user_id,program_id,status,payment_status,amount,currency,transaction_id,form_data,classroom_link,defer_active,completed_at,created_at,is_draft')
-      .eq('program_id', programId)
-      .order('created_at', { ascending: false });
-    const list = (enr as Enrollment[]) || [];
-
-    // Also fetch incomplete drafts from registration_drafts and merge as read-only cards
-    const { data: drafts } = await supabase
-      .from('registration_drafts')
-      .select('id,user_id,program_id,registration_type,family_size,last_edited_at')
-      .eq('program_id', programId)
-      .order('last_edited_at', { ascending: false });
-    const draftItems: Enrollment[] = (drafts as any[] || []).map((d) => ({
-      id: -Number(d.id), // negative id to avoid collision
-      user_id: d.user_id,
-      program_id: d.program_id,
-      status: 'draft',
-      payment_status: 'pending',
-      amount: null,
-      currency: null,
-      transaction_id: null,
-      form_data: null,
-      classroom_link: null,
-      defer_active: null,
-      completed_at: null,
-      created_at: d.last_edited_at,
-      is_draft: true,
-    }));
-
-    const combined = [...draftItems, ...list];
-    setEnrollments(combined);
-
-    // Initialize classroom link inputs
-    const inputs: Record<number, string> = {};
-    combined.forEach((row) => { inputs[row.id] = row.classroom_link || ''; });
-    setClassroomInputs(inputs);
-
-    const userIds = Array.from(new Set(combined.map(e => e.user_id)));
-    if (userIds.length) {
-      const { data: profs } = await supabase
-        .from('profiles')
-        .select('id, full_name, email')
-        .in('id', userIds);
-      const map: Record<string, Profile> = {};
-      (profs as Profile[] | null)?.forEach(p => { map[p.id] = p; });
-      setProfiles(map);
-    } else setProfiles({});
-
+    const { data: session } = await supabase.auth.getSession();
+    const token = session.session?.access_token;
+    const res = await fetch(`/api/admin/enrollments/by-program?program_id=${programId}`, { headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}) } });
+    if (res.ok) {
+      const json = await res.json();
+      const items = (json.items || []) as Enrollment[];
+      const profs = (json.profiles || {}) as Record<string, Profile>;
+      setEnrollments(items);
+      setProfiles(profs);
+      const inputs: Record<number, string> = {};
+      items.forEach((row) => { inputs[row.id] = row.classroom_link || ''; });
+      setClassroomInputs(inputs);
+    } else {
+      setEnrollments([]);
+      setProfiles({});
+    }
     setLoading(false);
   };
 
