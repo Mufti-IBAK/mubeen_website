@@ -219,7 +219,6 @@ export default function RegistrationsByProgramClient({ programId }: { programId:
                   <button className="btn-outline" onClick={() => setDeferred(e.id, !e.defer_active)} disabled={!!e.is_draft}>{e.defer_active ? 'Resume' : 'Defer'}</button>
                   <button className="btn-outline" onClick={() => markCompleted(e.id)} disabled={!!e.completed_at || !!e.is_draft}>{e.completed_at ? 'Completed' : 'Mark Completed'}</button>
                 </div>
-                </div>
               </div>
             );
           })

@@ -409,7 +409,7 @@ export default function RegistrationsClient() {
                   </button>
                   <button className="btn-destructive" onClick={() => remove(e.id)} disabled={!!(e as any).is_draft}>Remove</button>
                   <div className="flex items-center gap-2">
-                    <select className="input" onChange={(ev) => transfer(e.id, Number(ev.target.value))} defaultValue="" disabled={!!(e as any).is_draft}>
+                    <select className="input" aria-label="Transfer this registration to another program" onChange={(ev) => transfer(e.id, Number(ev.target.value))} defaultValue="" disabled={!!(e as any).is_draft}>
                       <option value="" disabled>Transfer to…</option>
                       {programs.filter(p => p.id !== e.program_id).map(p => (
                         <option key={p.id} value={p.id}>{p.title}</option>
