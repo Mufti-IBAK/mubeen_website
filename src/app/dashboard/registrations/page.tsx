@@ -17,11 +17,23 @@ type Enrollment = {
   amount: number | null;
   currency: string | null;
   classroom_link?: string | null;
+  classroom_enabled?: boolean | null;
   defer_active?: boolean | null;
   completed_at?: string | null;
 };
 
-type Program = { id: number; title: string; slug: string };
+type Program = {
+  id: number;
+  title: string;
+  slug: string;
+  image_url?: string | null;
+  duration?: string | null;
+  start_date?: string | null;
+  language?: string | null;
+  level?: string | null;
+  overview?: string | null;
+  instructors?: { name?: string; title?: string; avatar_url?: string }[] | null;
+};
 
 type Plan = { id: number; price: number; currency: string };
 
@@ -242,10 +254,10 @@ export default function DashboardRegistrationsPage() {
                         <p className="font-semibold">{p?.title || `Program ${e.program_id}`}</p>
                         <p className="text-xs text-[hsl(var(--muted-foreground))]">Started: {new Date(e.created_at).toLocaleString()}</p>
                         <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))] space-y-1">
-                          {p?.duration && <p>Duration: <span className="text-[hsl(var(--foreground))]">{(p as any).duration}</span></p>}
-                          {(p as any)?.start_date && <p>Start: <span className="text-[hsl(var(--foreground))]">{(p as any).start_date}</span></p>}
-                          {Array.isArray((p as any)?.instructors) && (p as any).instructors[0]?.name && (
-                            <p>Instructor: <span className="text-[hsl(var(--foreground))]">{(p as any).instructors[0].name}</span></p>
+                          {p?.duration && <p>Duration: <span className="text-[hsl(var(--foreground))]">{p.duration}</span></p>}
+                          {p?.start_date && <p>Start: <span className="text-[hsl(var(--foreground))]">{p.start_date}</span></p>}
+                          {Array.isArray(p?.instructors || null) && p!.instructors![0]?.name && (
+                            <p>Instructor: <span className="text-[hsl(var(--foreground))]">{p!.instructors![0]!.name}</span></p>
                           )}
                         </div>
                       </div>
@@ -255,7 +267,7 @@ export default function DashboardRegistrationsPage() {
                     {unpaid && <button className="btn-primary" onClick={() => payNow(e)}>Pay Now</button>}
                     {deferred ? (
                       <button className="btn-ghost cursor-not-allowed opacity-70" disabled>Deferred</button>
-                    ) : e.payment_status === 'paid' && e.classroom_link && (e as any).classroom_enabled ? (
+) : e.payment_status === 'paid' && e.classroom_link && e.classroom_enabled ? (
                       <a className="btn-primary" href={ensureAbsoluteUrl(e.classroom_link || '')} target="_blank" rel="noopener noreferrer">Join the classroom</a>
                     ) : (
                       <Link className="btn-outline" href={p?.slug ? `/register?program=${p.slug}` : '/programs'}>Continue</Link>
