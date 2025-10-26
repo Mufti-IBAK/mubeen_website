@@ -58,9 +58,9 @@ export default function DashboardRegistrationsPage() {
       setEnrollments(list);
       const pids = Array.from(new Set(list.map(e => e.program_id)));
       if (pids.length) {
-        const { data: progs } = await supabase.from('programs').select('id,title,slug').in('id', pids);
+        const { data: progs } = await supabase.from('programs').select('id,title,slug,image_url,duration,start_date,language,level,overview,schedule,instructors').in('id', pids);
         const pm: Record<number, Program> = {};
-        (progs as Program[] | null)?.forEach(p => { pm[p.id] = p; });
+        (progs as any[] | null)?.forEach(p => { pm[p.id] = p as any; });
         setPrograms(pm);
       }
       const planIds = Array.from(new Set(list.map(e => e.plan_id).filter(Boolean))) as number[];
@@ -235,20 +235,27 @@ export default function DashboardRegistrationsPage() {
                   const p = programs[e.program_id];
                   const unpaid = (e.payment_status || 'unpaid') === 'unpaid';
                   const deferred = !!e.defer_active;
-                  return (
-                    <div key={e.id} className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm p-4 flex flex-col gap-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <h3 className="font-semibold">{p?.title || `Program ${e.program_id}`}</h3>
-                      <p className="text-xs text-[hsl(var(--muted-foreground))]">Started: {new Date(e.created_at).toLocaleString()}</p>
-                    </div>
+                return (
+                  <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm p-4 flex flex-col gap-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <p className="font-semibold">{p?.title || `Program ${e.program_id}`}</p>
+                        <p className="text-xs text-[hsl(var(--muted-foreground))]">Started: {new Date(e.created_at).toLocaleString()}</p>
+                        <div className="mt-1 text-xs text-[hsl(var(--muted-foreground))] space-y-1">
+                          {p?.duration && <p>Duration: <span className="text-[hsl(var(--foreground))]">{(p as any).duration}</span></p>}
+                          {(p as any)?.start_date && <p>Start: <span className="text-[hsl(var(--foreground))]">{(p as any).start_date}</span></p>}
+                          {Array.isArray((p as any)?.instructors) && (p as any).instructors[0]?.name && (
+                            <p>Instructor: <span className="text-[hsl(var(--foreground))]">{(p as any).instructors[0].name}</span></p>
+                          )}
+                        </div>
+                      </div>
                     <span className={`badge ${deferred ? 'bg-orange-100 text-orange-700' : unpaid ? 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))]' : 'bg-green-100 text-green-700'}`}>{deferred ? 'deferred' : (e.payment_status || 'unpaid')}</span>
                   </div>
                   <div className="grid grid-cols-2 gap-2 items-center">
                     {unpaid && <button className="btn-primary" onClick={() => payNow(e)}>Pay Now</button>}
                     {deferred ? (
                       <button className="btn-ghost cursor-not-allowed opacity-70" disabled>Deferred</button>
-                    ) : e.payment_status === 'paid' && e.classroom_link ? (
+                    ) : e.payment_status === 'paid' && e.classroom_link && (e as any).classroom_enabled ? (
                       <a className="btn-primary" href={ensureAbsoluteUrl(e.classroom_link || '')} target="_blank" rel="noopener noreferrer">Join the classroom</a>
                     ) : (
                       <Link className="btn-outline" href={p?.slug ? `/register?program=${p.slug}` : '/programs'}>Continue</Link>
@@ -258,6 +265,9 @@ export default function DashboardRegistrationsPage() {
                     <button className="btn-outline" onClick={() => { window.location.href = `/dashboard/registrations/request?type=transfer&id=${e.id}`; }}>Transfer</button>
                     <button className="btn-outline" onClick={() => { window.location.href = `/dashboard/registrations/request?type=defer&id=${e.id}`; }}>Defer</button>
                     <button className="btn-outline" onClick={() => { window.location.href = `/dashboard/registrations/request?type=quit&id=${e.id}`; }}>End Program</button>
+                  </div>
+                  <div className="pt-2 flex flex-wrap gap-2">
+                    <a href="mailto:mubeenacademy001@gmail.com" className="btn-outline">Contact Support</a>
                   </div>
                 </div>
               );

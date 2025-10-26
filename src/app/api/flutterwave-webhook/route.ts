@@ -70,9 +70,13 @@ export async function POST(req: NextRequest) {
         } else {
           const finalPlanId = planId || (draft as any).plan_id || null;
           let durationMonths: number | null = null;
+          let planPrice: number | null = null;
+          let planCurrency: string | null = null;
           if (finalPlanId) {
-            const { data: planRow } = await admin.from('program_plans').select('duration_months').eq('id', finalPlanId).maybeSingle();
+            const { data: planRow } = await admin.from('program_plans').select('duration_months,price,currency').eq('id', finalPlanId).maybeSingle();
             durationMonths = (planRow as any)?.duration_months ?? null;
+            planPrice = planPrice ?? (planRow as any)?.price ?? null;
+            planCurrency = (planRow as any)?.currency ?? null;
           }
           const payload: Record<string, any> = {
             user_id: (draft as any).user_id,
@@ -84,8 +88,8 @@ export async function POST(req: NextRequest) {
             plan_id: finalPlanId,
             duration_months: durationMonths,
             form_data: (draft as any).draft_data || {},
-            amount: paidAmount,
-            currency: paidCurrency,
+            amount: paidAmount || planPrice,
+            currency: paidCurrency || planCurrency,
             transaction_id,
           };
           const { data: inserted, error: insErr } = await admin.from('enrollments').insert(payload).select('id').single();
