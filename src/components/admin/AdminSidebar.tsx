@@ -9,6 +9,8 @@ export const AdminSidebar: React.FC = () => {
   const nav = [
     { href: "/admin", label: "Dashboard" },
     { href: "/admin/programs", label: "Programs" },
+    { href: "/admin/registrations", label: "Registrations" },
+    { href: "/admin/unpaid_enroll", label: "Unpaid Enrollments" },
     { href: "/admin/resources", label: "Resources" },
     { href: "/admin/users", label: "Users" },
   ];

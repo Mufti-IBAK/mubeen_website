@@ -59,9 +59,18 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json();
     // Accept the full payload, sanitize basic types
+    const rawTitle = String(body.title || '');
+    const rawSlug = String(body.slug || '');
+    const slugSanitized = rawSlug
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '')
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-');
+
     const payload: Record<string, unknown> = {
-      title: String(body.title || ''),
-      slug: String(body.slug || ''),
+      title: rawTitle,
+      slug: slugSanitized,
       description: body.description || null,
       image_url: body.image_url || null,
       duration: body.duration || null,
@@ -100,6 +109,46 @@ export async function POST(req: NextRequest) {
 
     const json = await res.json();
     const row = Array.isArray(json) ? json[0] : json;
+
+    // After creating a program, auto-seed default Individual form from existing template
+    try {
+      const url = getEnv('NEXT_PUBLIC_SUPABASE_URL');
+      const service = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+      // Fetch a default individual form schema from any existing program
+      const tplRes = await fetch(`${url}/rest/v1/program_forms?form_type=eq.individual&select=schema&limit=1`, {
+        headers: { apikey: service as string, Authorization: `Bearer ${service}` }, cache: 'no-store'
+      });
+      let schema: any = null;
+      if (tplRes.ok) {
+        const arr = await tplRes.json();
+        schema = arr?.[0]?.schema || null;
+      }
+      // Fallback basic schema if none exists
+      if (!schema) {
+        schema = {
+          title: `Register for ${rawTitle || 'Program'}`,
+          fields: [
+            { type: 'text', name: 'full_name', label: 'Full name', required: true },
+            { type: 'email', name: 'email', label: 'Email', required: true },
+            { type: 'tel', name: 'phone', label: 'Phone', required: false },
+          ],
+        };
+      }
+      // Insert for new program
+      await fetch(`${url}/rest/v1/program_forms`, {
+        method: 'POST',
+        headers: { apikey: service as string, Authorization: `Bearer ${service}`, 'content-type': 'application/json' },
+        body: JSON.stringify({ program_id: row?.id, form_type: 'individual', schema })
+      });
+
+      // Ensure a default Individual plan exists as well (so payment works end-to-end)
+      await fetch(`${url}/rest/v1/program_plans`, {
+        method: 'POST',
+        headers: { apikey: service as string, Authorization: `Bearer ${service}`, 'content-type': 'application/json', Prefer: 'resolution=merge-duplicates' },
+        body: JSON.stringify({ program_id: row?.id, plan_type: 'individual', family_size: null, price: 0, currency: 'NGN', duration_months: 3 })
+      });
+    } catch {}
+
     return NextResponse.json({ ok: true, id: row?.id }, { status: 200 });
   } catch (err: any) {
     return NextResponse.json({ error: err?.message || 'server_error' }, { status: 500 });

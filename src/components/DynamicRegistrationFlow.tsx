@@ -265,7 +265,7 @@ export const DynamicRegistrationFlow: React.FC<{ programSlug?: string }> = ({ pr
   if (!program) return (
     <div className="text-center space-y-4">
       <div className="text-[hsl(var(--muted-foreground))]">Program not found.</div>
-      <p className="text-sm text-[hsl(var(--muted-foreground))]">The program "{programSlug}" does not exist or has been removed.</p>
+      <p className="text-sm text-[hsl(var(--muted-foreground))]">The program &quot;{programSlug}&quot; does not exist or has been removed.</p>
     </div>
   );
 

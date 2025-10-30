@@ -15,13 +15,13 @@ export default function RegisterClient({ programSlug }: { programSlug?: string }
         console.log('Client-side auth check:', !!data.user);
         if (!data.user) {
           console.log('No user found on client, redirecting to login');
-          window.location.href = `/login?next=${encodeURIComponent(`/register?program=${programSlug || ''}`)}}`;
+          window.location.href = `/login?next=${encodeURIComponent(`/programs/${programSlug || ''}/register`)}}`;
           return;
         }
         setIsAuthenticated(true);
       } catch (error) {
         console.error('Auth check error:', error);
-        window.location.href = `/login?next=${encodeURIComponent(`/register?program=${programSlug || ''}`)}}`;
+        window.location.href = `/login?next=${encodeURIComponent(`/programs/${programSlug || ''}/register`)}}`;
       } finally {
         setAuthLoading(false);
       }

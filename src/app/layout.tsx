@@ -16,10 +16,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
   return (
     <html lang="en" className={`${fontHeading.variable} ${fontBody.variable}`}>
       <body className="bg-[hsl(var(--background))] text-[hsl(var(--foreground))] font-sans antialiased transition-colors">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 bg-white text-black p-2 rounded">Skip to main content</a>
         <SignUpModal />
         <div className="flex flex-col min-h-screen">
           <Header />
-          <main className="relative flex-1">{children}</main>
+          <main id="main-content" className="relative flex-1">{children}</main>
           <Footer />
         </div>
         <Toaster />

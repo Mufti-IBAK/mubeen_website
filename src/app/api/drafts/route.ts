@@ -23,6 +23,12 @@ function getBearer(req: NextRequest) {
   return p.length === 2 && /^bearer$/i.test(p[0]) ? p[1] : null;
 }
 
+function isMissingTable(err: any) {
+  const msg = String(err?.message || '').toLowerCase();
+  const code = String(err?.code || '').toUpperCase();
+  return code === 'PGRST205' || msg.includes("could not find the table 'public.registration_drafts'");
+}
+
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
@@ -30,7 +36,7 @@ export async function GET(request: NextRequest) {
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     const bearer = getBearer(request);
 
-    let supabase = createServerClient(url, anon, {
+    const supabase = createServerClient(url, anon, {
       cookies: {
         getAll() { return cookieStore.getAll(); },
         setAll(cookiesToSet) { try { cookiesToSet.forEach(({name, value, options}) => cookieStore.set(name, value, options)); } catch {} },
@@ -59,6 +65,10 @@ export async function GET(request: NextRequest) {
       .order('last_edited_at', { ascending: false });
 
     if (error) {
+      if (isMissingTable(error)) {
+        // Gracefully degrade when drafts table is absent
+        return NextResponse.json({ drafts: [] });
+      }
       console.error('Error fetching drafts:', error);
       return NextResponse.json({ error: 'Failed to fetch drafts' }, { status: 500 });
     }
@@ -79,7 +89,10 @@ export async function GET(request: NextRequest) {
     }));
 
     return NextResponse.json({ drafts: transformed });
-  } catch (error) {
+  } catch (error: any) {
+    if (isMissingTable(error)) {
+      return NextResponse.json({ drafts: [] });
+    }
     console.error('API Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
@@ -92,7 +105,7 @@ export async function POST(request: NextRequest) {
     const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     const bearer = getBearer(request);
 
-    let supabase = createServerClient(url, anon, {
+    const supabase = createServerClient(url, anon, {
       cookies: {
         getAll() { return cookieStore.getAll(); },
         setAll(cookiesToSet) { try { cookiesToSet.forEach(({name, value, options}) => cookieStore.set(name, value, options)); } catch {} },
@@ -117,13 +130,18 @@ export async function POST(request: NextRequest) {
     const programIdNum = Number(parsed.program_id);
     const { registration_type, form_data, family_size, plan_id } = parsed;
 
-    const { data: existingDraft } = await userScoped
+    const { data: existingDraft, error: selErr } = await userScoped
       .from('registration_drafts')
       .select('id')
       .eq('user_id', userId)
       .eq('program_id', programIdNum)
       .eq('registration_type', registration_type)
       .maybeSingle();
+
+    if (selErr && isMissingTable(selErr)) {
+      // Drafts feature disabled: acknowledge save without error
+      return NextResponse.json({ draft: null, message: 'Drafts are disabled' });
+    }
 
     let result;
 
@@ -141,6 +159,7 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (error) {
+        if (isMissingTable(error)) return NextResponse.json({ draft: null, message: 'Drafts are disabled' });
         console.error('Error updating draft:', error);
         return NextResponse.json({ error: 'Failed to save draft' }, { status: 500 });
       }
@@ -161,6 +180,7 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (error) {
+        if (isMissingTable(error)) return NextResponse.json({ draft: null, message: 'Drafts are disabled' });
         console.error('Error creating draft:', error);
         return NextResponse.json({ error: 'Failed to save draft' }, { status: 500 });
       }
@@ -168,9 +188,12 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ draft: result, message: 'Draft saved successfully' });
-  } catch (error) {
+  } catch (error: any) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({ error: 'Invalid request data', details: error.issues }, { status: 400 });
+    }
+    if (isMissingTable(error)) {
+      return NextResponse.json({ draft: null, message: 'Drafts are disabled' });
     }
     console.error('API Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
@@ -203,12 +226,14 @@ export async function DELETE(request: NextRequest) {
       .eq('id', draftId);
 
     if (error) {
+      if (isMissingTable(error)) return NextResponse.json({ message: 'Drafts are disabled' });
       console.error('Error deleting draft:', error);
       return NextResponse.json({ error: 'Failed to delete draft' }, { status: 500 });
     }
 
     return NextResponse.json({ message: 'Draft deleted successfully' });
-  } catch (error) {
+  } catch (error: any) {
+    if (isMissingTable(error)) return NextResponse.json({ message: 'Drafts are disabled' });
     console.error('API Error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }

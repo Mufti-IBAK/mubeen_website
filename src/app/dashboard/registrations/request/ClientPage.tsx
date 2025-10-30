@@ -42,7 +42,7 @@ export default function ClientPage({ initialType, initialId }: { initialType: st
   const email = useMemo(() => {
     const subjectBase = type === 'transfer' ? 'Transfer Request' : type === 'defer' ? 'Defer Request' : 'End Program Request';
     const subject = id ? `[${subjectBase}] Enrollment #${id}` : subjectBase;
-    let bodyLines: string[] = [
+    const bodyLines: string[] = [
       "Dear Mubeen Academy Team,",
       "",
     ];

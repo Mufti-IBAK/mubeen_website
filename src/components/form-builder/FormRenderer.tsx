@@ -8,9 +8,10 @@ type RendererProps = {
   onChange?: (vals: Record<string, unknown>) => void;
   initialValues?: Record<string, any>;
   disabled?: boolean;
+  submitLabel?: string; // override final button label
 };
 
-export const FormRenderer: React.FC<RendererProps> = ({ schema, onSubmit, onSaveDraft, onChange, initialValues, disabled }) => {
+export const FormRenderer: React.FC<RendererProps> = ({ schema, onSubmit, onSaveDraft, onChange, initialValues, disabled, submitLabel }) => {
   const formRef = React.useRef<HTMLFormElement>(null);
   const collect = (): Record<string, unknown> => {
     const form = formRef.current;
@@ -64,19 +65,19 @@ export const FormRenderer: React.FC<RendererProps> = ({ schema, onSubmit, onSave
   const atEnd = idx === Math.max(sections.length - 1, 0);
 
   return (
-    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6">
-      <div>
+    <form ref={formRef} onSubmit={handleSubmit} className="space-y-6" aria-label={schema.title || 'Registration form'}>
+      <div role="heading" aria-level={1}>
         <h2 className="text-2xl font-bold text-[hsl(var(--foreground))]">{schema.title}</h2>
         {schema.description && (
-          <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">{schema.description}</p>
+          <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]" id="form-description">{schema.description}</p>
         )}
       </div>
 
       {sections.map((sec, sIdx) => (
-        <div key={sec.id} style={{ display: sIdx === idx ? "block" : "none" }}>
+        <div key={sec.id} role="region" aria-label={`Form section: ${sec.title}`} aria-hidden={sIdx !== idx} style={{ display: sIdx === idx ? "block" : "none" }}>
           <div className="pt-2">
-            <h3 className="text-xl font-semibold text-[hsl(var(--foreground))]">{sec.title}</h3>
-            {sec.description && <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">{sec.description}</p>}
+            <h3 className="text-xl font-semibold text-[hsl(var(--foreground))]" id={`section-${sIdx}-heading`}>{sec.title}</h3>
+            {sec.description && <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]" id={`section-${sIdx}-description`}>{sec.description}</p>}
           </div>
 
           <div className="mt-4 space-y-4">
@@ -125,24 +126,31 @@ export const FormRenderer: React.FC<RendererProps> = ({ schema, onSubmit, onSave
         </div>
       ))}
 
-      <div className="flex items-center justify-between pt-2">
+      <nav className="flex items-center justify-between pt-2" role="navigation" aria-label="Form navigation">
         <div className="flex items-center gap-2">
-          <button type="button" disabled={atStart} onClick={() => setIdx((v) => Math.max(0, v - 1))} className="btn-outline disabled:opacity-50">Back</button>
+          <button type="button" disabled={atStart} onClick={() => setIdx((v) => Math.max(0, v - 1))} className="btn-outline disabled:opacity-50" aria-label="Go to previous section">Back</button>
           {onSaveDraft && (
             <button type="button" className="btn-outline" onClick={(e) => {
               const fd = new FormData((e.currentTarget as HTMLButtonElement).form!);
               const vals: Record<string, unknown> = {};
               for (const [k, v] of fd.entries()) vals[k] = v;
               onSaveDraft(vals);
-            }}>Save & Continue Later</button>
+            }} aria-label="Save your progress and continue later">Save & Continue Later</button>
           )}
         </div>
         {atEnd ? (
-          <button type="submit" className="btn-primary">Proceed to payment</button>
+          <button
+            type="button"
+            className="btn-primary"
+            onClick={() => onSubmit(collect())}
+            aria-label={submitLabel || 'Submit form and proceed to payment'}
+          >
+            {submitLabel || 'Proceed to payment'}
+          </button>
         ) : (
-          <button type="button" onClick={() => setIdx((v) => Math.min(sections.length - 1, v + 1))} className="btn-primary">Next</button>
+          <button type="button" onClick={() => setIdx((v) => Math.min(sections.length - 1, v + 1))} className="btn-primary" aria-label="Go to next section">Next</button>
         )}
-      </div>
+      </nav>
     </form>
   );
 };

@@ -3,37 +3,36 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { FormBuilder, FormSchema } from "@/components/form-builder/FormBuilder";
-import { FaUser, FaUserTie, FaUsers } from "react-icons/fa";
-
-const types = [
-  { key: "individual", label: "Individual", icon: FaUser },
-  { key: "family_head", label: "Family Head", icon: FaUserTie },
-  { key: "family_member", label: "Family Member", icon: FaUsers },
-] as const;
-
-type Key = typeof types[number]["key"];
 
 export function ProgramFormsClient({ programId }: { programId: number }) {
-  const [active, setActive] = useState<Key>("individual");
+  const [active] = useState<'individual'>("individual");
   const [schema, setSchema] = useState<FormSchema>({ title: "Registration Form", fields: [] });
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
 
-  const load = async (formType: Key) => {
+  const load = async () => {
     setLoading(true);
+    // Fetch program title to keep schema title aligned
+    const { data: prog } = await supabase.from('programs').select('title').eq('id', programId).maybeSingle();
+    const progTitle = (prog as any)?.title as string | undefined;
+
     const { data } = await supabase
       .from("program_forms")
       .select("id, schema")
       .eq("program_id", programId)
-      .eq("form_type", formType)
-      .single();
-    if (data?.schema) setSchema(data.schema as FormSchema);
-    else setSchema({ title: "Registration Form", fields: [] });
+      .eq("form_type", 'individual')
+      .maybeSingle();
+    let next = (data?.schema as FormSchema) || { title: "Registration Form", fields: [] };
+    if (progTitle) {
+      const desired = `Register for ${progTitle}`;
+      if (!next.title || next.title !== desired) next = { ...next, title: desired };
+    }
+    setSchema(next);
     setLoading(false);
   };
 
   useEffect(() => {
-    load(active);
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [active, programId]);
 
@@ -43,7 +42,7 @@ export function ProgramFormsClient({ programId }: { programId: number }) {
       const { data: s } = await supabase.auth.getSession();
       const token = s.session?.access_token;
       const res = await fetch('/api/admin/forms/upsert', {
-        method: 'POST', headers: { 'content-type': 'application/json', ...(token ? { 'authorization': `Bearer ${token}` } : {}) }, body: JSON.stringify({ scope: 'program', id: programId, form_type: active, schema })
+        method: 'POST', headers: { 'content-type': 'application/json', ...(token ? { 'authorization': `Bearer ${token}` } : {}) }, body: JSON.stringify({ scope: 'program', id: programId, form_type: 'individual', schema })
       });
       const json = await res.json();
       setMessage(res.ok && json?.ok ? 'Saved!' : (json?.error || 'Failed to save'));
@@ -63,17 +62,8 @@ export function ProgramFormsClient({ programId }: { programId: number }) {
 
       <div className="card">
         <div className="card-body">
-          <div className="flex gap-2 mb-4">
-            {types.map(t => {
-              const Icon = t.icon;
-              const activeTab = active === t.key;
-              return (
-                <button key={t.key} onClick={() => setActive(t.key)}
-                  className={`px-3 py-2 rounded-md border flex items-center gap-2 hover-lift ${activeTab ? 'bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] border-transparent' : 'bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] border-[hsl(var(--border))]'}`}>
-                  <Icon /> {t.label}
-                </button>
-              );
-            })}
+          <div className="mb-4">
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">Editing the Individual registration form.</p>
           </div>
 
           <div className="card border border-[hsl(var(--border))]">
@@ -83,9 +73,9 @@ export function ProgramFormsClient({ programId }: { programId: number }) {
               ) : (
                 <FormBuilder initial={schema} onChange={setSchema} />
               )}
-              <div className="mt-4 flex items-center gap-3">
-                <button onClick={handleSave} className="btn-primary">Save Form</button>
-                {message && <span className="text-sm text-[hsl(var(--muted-foreground))]">{message}</span>}
+              <div className="mt-4 flex items-center gap-3" aria-live="polite">
+                <button onClick={handleSave} className="btn-primary" aria-label="Save form">Save Form</button>
+                {message && <span className="text-sm text-[hsl(var(--muted-foreground))]" role="status">{message}</span>}
               </div>
             </div>
           </div>

@@ -68,7 +68,7 @@ export async function GET(req: NextRequest) {
 
     const items = [...draftItems, ...enrollments];
     const userIds = Array.from(new Set(items.map(i => i.user_id)));
-    let profiles: Record<string, { full_name: string | null; email: string | null }> = {};
+    const profiles: Record<string, { full_name: string | null; email: string | null }> = {};
     if (userIds.length) {
       const { data: profs } = await admin.from('profiles').select('id,full_name,email').in('id', userIds);
       (profs as any[] || []).forEach(p => { profiles[p.id] = { full_name: p.full_name, email: p.email }; });

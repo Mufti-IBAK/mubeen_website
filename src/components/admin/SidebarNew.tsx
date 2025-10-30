@@ -24,8 +24,9 @@ export function AdminSidebarNew({ open, onClose }: { open: boolean; onClose: () 
 
   const nav = [
     { href: "/admin", label: "Dashboard", icon: FaTachometerAlt },
-    { href: "/admin/registrations", label: "Registrations", icon: FaUsers },
     { href: "/admin/programs", label: "Programs", icon: FaBook },
+    { href: "/admin/registrations", label: "Registrations", icon: FaFileAlt },
+    { href: "/admin/unpaid_enroll", label: "Unpaid Enrollments", icon: FaFileAlt },
     { href: "/admin/resources", label: "Resources", icon: FaFileAlt },
     { href: "/admin/user-management", label: "Users", icon: FaUsers },
   ];

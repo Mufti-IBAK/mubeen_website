@@ -59,26 +59,45 @@ export async function POST(req: NextRequest) {
     const scope = (body?.scope === 'program' || body?.scope === 'course') ? body.scope : 'program';
     const id = Number(body?.id);
     const form_type = String(body?.form_type || 'individual');
-    const schema = body?.schema || null;
-    if (!id || !schema) return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
+    const inputSchema = body?.schema || null;
+    if (!id || !inputSchema) return NextResponse.json({ error: 'invalid_request' }, { status: 400 });
 
     const supabaseUrl = getEnv('NEXT_PUBLIC_SUPABASE_URL');
     const anonKey = getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', process.env.SUPABASE_ANON_KEY);
     const service = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
     const basePath = scope === 'program' ? '/rest/v1/program_forms' : '/rest/v1/course_forms';
-    const payload = scope === 'program'
-      ? { program_id: id, form_type, schema }
-      : { course_id: id, form_type, schema };
 
-    // 1) Check if a form row already exists
+    // Ensure schema title matches program/course title when scope is program
+    let finalSchema = { ...inputSchema };
+    if (scope === 'program') {
+      const progRes = await fetch(`${supabaseUrl}/rest/v1/programs?id=eq.${id}&select=title`, {
+        headers: { apikey: service as string, Authorization: `Bearer ${service}` }, cache: 'no-store'
+      });
+      if (progRes.ok) {
+        const arr = await progRes.json();
+        const progTitle = arr?.[0]?.title as string | undefined;
+        if (progTitle) {
+          const desired = `Register for ${progTitle}`;
+          if (!finalSchema?.title || finalSchema.title !== desired) {
+            finalSchema = { ...finalSchema, title: desired };
+          }
+        }
+      }
+    }
+
+    const payload = scope === 'program'
+      ? { program_id: id, form_type, schema: finalSchema }
+      : { course_id: id, form_type, schema: finalSchema };
+
+    // 1) Check if a form row already exists (use service role for robustness)
     const queryParams = scope === 'program'
       ? `?select=id&program_id=eq.${id}&form_type=eq.${encodeURIComponent(form_type)}`
       : `?select=id&course_id=eq.${id}&form_type=eq.${encodeURIComponent(form_type)}`;
     const existsRes = await fetch(`${supabaseUrl}${basePath}${queryParams}`, {
       headers: {
-        apikey: anonKey as string,
-        Authorization: `Bearer ${await readAccessToken(req)}` || '',
+        apikey: service as string,
+        Authorization: `Bearer ${service}`,
       },
       cache: 'no-store',
     });
@@ -96,7 +115,7 @@ export async function POST(req: NextRequest) {
             'content-type': 'application/json',
             Prefer: 'return=representation',
           },
-          body: JSON.stringify({ schema }),
+          body: JSON.stringify({ schema: finalSchema }),
         });
         if (!updateRes.ok) {
           const t = await updateRes.text();

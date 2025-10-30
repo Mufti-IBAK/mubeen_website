@@ -16,8 +16,15 @@ export default async function HomePage() {
     supabase.from('quotes').select('*'),
   ]);
 
-  const testimonials = testimonialsResult.data as Testimonial[] | null;
-  const quotes = quotesResult.data as Quote[] | null;
+  if ((testimonialsResult as any)?.error) {
+    console.error('Failed to fetch testimonials:', (testimonialsResult as any).error);
+  }
+  if ((quotesResult as any)?.error) {
+    console.error('Failed to fetch quotes:', (quotesResult as any).error);
+  }
+
+  const testimonials: Testimonial[] = ((testimonialsResult as any)?.data ?? []) as Testimonial[];
+  const quotes: Quote[] = ((quotesResult as any)?.data ?? []) as Quote[];
 
   const faqData = [
     {
@@ -45,7 +52,7 @@ export default async function HomePage() {
       <CoreValuesSection />
       <HighlightCards />
       <ProgramsShowcase />
-      <TestimonialSlider testimonials={testimonials ?? []} quotes={quotes ?? []} />
+      <TestimonialSlider testimonials={testimonials} quotes={quotes} />
 
       {/* Homepage FAQ */}
       <section className="py-16 bg-brand-bg">

@@ -67,6 +67,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     ];
     for (const k of allowed) if (k in body) patch[k] = body[k];
 
+    // Sanitize slug if provided
+    if (typeof patch.slug === 'string') {
+      const s = String(patch.slug);
+      patch.slug = s.toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-').replace(/-+/g, '-');
+    }
+
     const { error } = await supabaseAdmin.from("programs").update(patch).eq("id", programId);
     if (error) return NextResponse.json({ ok: false, error: error.message }, { status: 400 });
 

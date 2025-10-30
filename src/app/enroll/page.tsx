@@ -57,7 +57,7 @@ export default function EnrollPage() {
         const { data: userData, error: userError } = await supabase.auth.getUser();
         if (!userData.user || userError) {
           console.log('User not authenticated, redirecting to login');
-          window.location.href = `/login?next=${encodeURIComponent(`/enroll?program=${programSlug}`)}`;
+          window.location.href = `/login?next=${encodeURIComponent(`/programs/${programSlug}/register`)}`;
           return;
         }
         setUser(userData.user);

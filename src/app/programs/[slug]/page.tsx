@@ -106,7 +106,7 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
                     Registration closed
                   </button>
                 ) : (
-                  <Link href={`/enroll?program=${program.slug}`} prefetch>
+                  <Link href={`/programs/${program.slug}/register`} prefetch>
                     <button className="w-full py-3 mt-6 font-semibold text-white transition-transform duration-300 ease-in-out rounded-md bg-brand-primary text-md hover:scale-105">
                       Register Now
                     </button>

@@ -138,82 +138,38 @@ export default function AdminProgramsEditClient({ programId }: { programId: numb
   };
 
   // Pricing & Plans state
-  const [plans, setPlans] = React.useState<Array<{ id?: number; plan_type: 'individual'|'family'; family_size: number|null; price: string; currency: string; duration_months: string }>>([
+  const [plans, setPlans] = React.useState<Array<{ id?: number; plan_type: 'individual'; family_size: null; price: string; currency: string; duration_months: string }>>([
     { plan_type: 'individual', family_size: null, price: '', currency: 'NGN', duration_months: '3' },
-    { plan_type: 'family', family_size: 2, price: '', currency: 'NGN', duration_months: '3' },
-    { plan_type: 'family', family_size: 3, price: '', currency: 'NGN', duration_months: '3' },
-    { plan_type: 'family', family_size: 4, price: '', currency: 'NGN', duration_months: '3' },
   ]);
   const [plansMsg, setPlansMsg] = React.useState('');
 
   React.useEffect(() => {
     const loadPlans = async () => {
-      const { data } = await supabase.from('program_plans').select('*').eq('program_id', id).order('family_size', { ascending: true });
-      if (data && Array.isArray(data)) {
-        const next = [...plans];
-        data.forEach((p: any) => {
-          const idx = next.findIndex(x => x.plan_type === p.plan_type && (x.family_size ?? null) === (p.family_size ?? null));
-          const rec = { id: p.id, plan_type: p.plan_type, family_size: p.family_size, price: String(p.price ?? ''), currency: p.currency ?? 'NGN', duration_months: String(p.duration_months ?? '3') };
-          if (idx >= 0) next[idx] = rec; else next.push(rec);
-        });
-        setPlans(next);
+      const { data } = await supabase.from('program_plans').select('*').eq('program_id', id).is('family_size', null).eq('plan_type','individual');
+      if (data && Array.isArray(data) && data[0]) {
+        const p = data[0] as any;
+        setPlans([{ id: p.id, plan_type: 'individual', family_size: null, price: String(p.price ?? ''), currency: p.currency ?? 'NGN', duration_months: String(p.duration_months ?? '3') }]);
       }
     };
     loadPlans();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [id]);
 
   const savePlans = async () => {
     setPlansMsg('');
-    const payload = plans
-      .filter(p => p.price)
-      .map(p => ({
-        program_id: id,
-        plan_type: p.plan_type,
-        family_size: p.family_size,
-        price: Number(p.price),
-        currency: p.currency || 'NGN',
-        duration_months: Number(p.duration_months || '3'),
-      }));
-    if (payload.length === 0) { setPlansMsg('Nothing to save'); return; }
-
-    // Split into individual (family_size null) and family entries (family_size not null)
-    const indiv = payload.find(p => p.plan_type === 'individual' && (p.family_size === null || typeof p.family_size === 'undefined'));
-    const families = payload.filter(p => p.plan_type === 'family' && p.family_size !== null && typeof p.family_size !== 'undefined');
+    const indiv = plans[0];
+    if (!indiv || !indiv.price) { setPlansMsg('Nothing to save'); return; }
 
     try {
-      // Upsert families using unique (program_id, plan_type, family_size)
-      if (families.length) {
-        const { error: famErr } = await supabase
-          .from('program_plans')
-          .upsert(families, { onConflict: 'program_id,plan_type,family_size' });
-        if (famErr) throw famErr;
-      }
-
-      // For the individual plan (family_size null), ON CONFLICT won't match NULL.
-      // So we update if exists, else insert.
-      if (indiv) {
-        const { data: existing } = await supabase
-          .from('program_plans')
-          .select('id')
-          .eq('program_id', id)
-          .eq('plan_type', 'individual')
-          .is('family_size', null)
-          .single();
-        if (existing?.id) {
-          const { error: updErr } = await supabase
-            .from('program_plans')
-            .update({ price: indiv.price, currency: indiv.currency, duration_months: indiv.duration_months })
-            .eq('id', existing.id);
-          if (updErr) throw updErr;
-        } else {
-          const { error: insErr } = await supabase
-            .from('program_plans')
-            .insert({ program_id: id, plan_type: 'individual', family_size: null, price: indiv.price, currency: indiv.currency, duration_months: indiv.duration_months });
-          if (insErr) throw insErr;
-        }
-      }
-
+      const { data: sessionRes } = await supabase.auth.getSession();
+      const token = sessionRes.session?.access_token;
+      const res = await fetch(`/api/admin/programs/${id}/plans/update`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+        body: JSON.stringify({ price: Number(indiv.price), currency: indiv.currency, duration_months: Number(indiv.duration_months || '3') })
+      });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !j?.ok) throw new Error(j?.error || 'Failed');
       setPlansMsg('Plans saved');
     } catch (e: any) {
       setPlansMsg(e?.message || 'Failed to save plans');

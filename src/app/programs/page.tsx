@@ -5,14 +5,24 @@ import React from 'react';
 export const revalidate = 0;
 
 async function ProgramsPage(): Promise<React.JSX.Element> {
-  
-  const { data: programs, error } = await supabase
-    .from('programs')
-    .select('*')
-    .order('is_flagship', { ascending: false });
+  let programs: Program[] = [];
+  let fetchError = false;
 
-  if (error || !programs) {
-    console.error("Supabase error:", error?.message);
+  try {
+    const { data, error } = await supabase
+      .from('programs')
+      .select('*')
+      .order('is_flagship', { ascending: false });
+    
+    if (error) throw error;
+    programs = (data || []) as Program[];
+  } catch (error: any) {
+    fetchError = true;
+    // Log error server-side but don't crash
+    console.warn('Programs fetch failed:', error?.message);
+  }
+
+  if (fetchError) {
     return (
       <div className="bg-brand-bg">
         <div className="container px-6 py-20 mx-auto text-center">

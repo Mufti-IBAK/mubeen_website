@@ -71,7 +71,7 @@ export default function ClientPage({ draftId, planId }: { draftId: number; planI
               <p className="text-red-600">{error}</p>
             ) : (
               <>
-                <p className="text-[hsl(var(--muted-foreground))]">You're about to pay for <span className="font-semibold text-[hsl(var(--foreground))]">{programTitle}</span>.</p>
+                <p className="text-[hsl(var(--muted-foreground))]">You’re about to pay for <span className="font-semibold text-[hsl(var(--foreground))]">{programTitle}</span>.</p>
                 <ul className="list-disc pl-6 space-y-2 text-[hsl(var(--muted-foreground))]">
                   <li>We accept multiple payment methods via Flutterwave (Cards, Bank Transfer, USSD, etc.).</li>
                   <li>Please take a screenshot of your payment confirmation as evidence.</li>
