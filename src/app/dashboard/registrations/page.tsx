@@ -49,6 +49,7 @@ export default function DashboardRegistrationsPage() {
   const [successPayments, setSuccessPayments] = useState<Array<{ id: number; program_id: number|null; program_title: string|null; amount: number|null; currency: string|null; created_at: string; type: string }>>([]);
   const [programs, setPrograms] = useState<Record<number, Program>>({});
   const [plans, setPlans] = useState<Record<number, Plan>>({});
+  const [classLinks, setClassLinks] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [userEmail, setUserEmail] = useState('');
 
@@ -92,6 +93,23 @@ export default function DashboardRegistrationsPage() {
       .order('created_at', { ascending: false });
     const paid = ((seRows as any[]) || []).filter(r => r?.status === 'paid');
     setSuccessPayments(paid);
+
+    // Fetch classroom links for paid enrollments
+    if (paid.length > 0) {
+      const enrollmentIds = paid.map((p: any) => p.id);
+      const { data: linksData } = await supabase
+        .from('class_links')
+        .select('enrollment_id, classroom_link')
+        .in('enrollment_id', enrollmentIds);
+      
+      if (linksData) {
+        const linksMap: Record<number, string> = {};
+        linksData.forEach((link: {enrollment_id: number; classroom_link: string}) => {
+          linksMap[link.enrollment_id] = link.classroom_link;
+        });
+        setClassLinks(linksMap);
+      }
+    }
 
     setLoading(false);
   }, []);
@@ -322,11 +340,11 @@ export default function DashboardRegistrationsPage() {
 
             {/* My Enrollments from success_enroll */}
             {successPayments.length > 0 && (
-              <section>
-                <h2 className="text-xl font-semibold mb-4">My Enrollments</h2>
+              <section aria-labelledby="my-enrollments-heading">
+                <h2 id="my-enrollments-heading" className="text-xl font-semibold mb-4">My Enrollments</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
                   {successPayments.map((r) => (
-                    <div key={r.id} className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm p-4 flex flex-col gap-3">
+                    <article key={r.id} className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm p-4 flex flex-col gap-3">
                       <div className="flex items-center justify-between">
                         <h3 className="font-semibold">{r.program_title || (r.program_id ? `Program ${r.program_id}` : r.type)}</h3>
                         <span className="badge bg-green-100 text-green-700 text-xs">Paid</span>
@@ -336,7 +354,19 @@ export default function DashboardRegistrationsPage() {
                         <p><span className="text-[hsl(var(--muted-foreground))] mr-1">Amount:</span>{r.currency || 'NGN'} {Number(r.amount || 0).toLocaleString()}</p>
                         <p className="text-[hsl(var(--muted-foreground))]">{new Date(r.created_at).toLocaleString()}</p>
                       </div>
-                    </div>
+                      {/* Join Classroom Button */}
+                      {classLinks[r.id] && (
+                        <a
+                          href={ensureAbsoluteUrl(classLinks[r.id])}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn-primary text-center mt-2"
+                          aria-label={`Join classroom for ${r.program_title || r.type}`}
+                        >
+                          Join Classroom
+                        </a>
+                      )}
+                    </article>
                   ))}
                 </div>
               </section>

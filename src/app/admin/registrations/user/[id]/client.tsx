@@ -4,13 +4,16 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useToast } from '@/components/ui/use-toast';
 
-type Row = { id: number; user_id: string | null; user_name: string | null; user_email: string | null; type: string; program_id: number | null; program_title: string | null; amount: number | null; currency: string | null; description: string | null; created_at: string };
+type Row = { id: number; user_id: string | null; user_name: string | null; user_email: string | null; type: string; program_id: number | null; program_title: string | null; amount: number | null; currency: string | null; description: string | null; created_at: string; classroom_link?: string | null };
 
 export default function Client({ idParam }: { idParam: string }) {
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<null | Row>(null);
   const [editor, setEditor] = useState<string>('');
+  const [linkEditing, setLinkEditing] = useState<null | Row>(null);
+  const [linkInput, setLinkInput] = useState<string>('');
+  const [classLinks, setClassLinks] = useState<Record<number, string>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -30,7 +33,24 @@ export default function Client({ idParam }: { idParam: string }) {
         const res = await fetch(`/api/admin/registrations/by-user?${params.toString()}` , { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
         if (!res.ok) throw new Error('failed');
         const json = await res.json();
-        setRows((json.items || []) as Row[]);
+        const items = (json.items || []) as Row[];
+        setRows(items);
+        
+        // Fetch classroom links for these enrollments
+        const enrollmentIds = items.map(r => r.id);
+        if (enrollmentIds.length > 0) {
+          const linksRes = await supabase
+            .from('class_links')
+            .select('enrollment_id, classroom_link')
+            .in('enrollment_id', enrollmentIds);
+          if (linksRes.data) {
+            const linksMap: Record<number, string> = {};
+            linksRes.data.forEach((link: {enrollment_id: number; classroom_link: string}) => {
+              linksMap[link.enrollment_id] = link.classroom_link;
+            });
+            setClassLinks(linksMap);
+          }
+        }
       } finally {
         setLoading(false);
       }
@@ -86,6 +106,53 @@ export default function Client({ idParam }: { idParam: string }) {
     }
   };
 
+  const openLinkEditor = (row: Row) => {
+    setLinkEditing(row);
+    setLinkInput(classLinks[row.id] || '');
+  };
+
+  const saveLinkEditor = async () => {
+    if (!linkEditing) return;
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      const token = session.session?.access_token;
+      const res = await fetch('/api/admin/class-links/upsert', {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          enrollment_id: linkEditing.id,
+          classroom_link: linkInput.trim(),
+        }),
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to save link');
+      }
+      
+      // Update local state
+      if (linkInput.trim() === '') {
+        // Remove link from state
+        setClassLinks(prev => {
+          const updated = { ...prev };
+          delete updated[linkEditing.id];
+          return updated;
+        });
+      } else {
+        // Update link in state
+        setClassLinks(prev => ({ ...prev, [linkEditing.id]: linkInput.trim() }));
+      }
+      
+      setLinkEditing(null);
+      toast({ title: 'Saved', description: linkInput.trim() === '' ? 'Classroom link removed' : 'Classroom link saved successfully' });
+    } catch (e: any) {
+      toast({ title: 'Error', description: e?.message || 'Failed to save link', variant: 'destructive' });
+    }
+  };
+
   return (
     <>
       <div className="space-y-4">
@@ -111,6 +178,7 @@ export default function Client({ idParam }: { idParam: string }) {
                 <th className="py-2 pr-4">Program</th>
                 <th className="py-2 pr-4">Category</th>
                 <th className="py-2 pr-4">Amount</th>
+                <th className="py-2 pr-4">Classroom</th>
                 <th className="py-2 pr-4">When</th>
                 <th className="py-2 pr-4">Actions</th>
               </tr>
@@ -123,11 +191,19 @@ export default function Client({ idParam }: { idParam: string }) {
                   <td className="py-2 pr-4">{r.program_id ? (r.program_title || `Program ${r.program_id}`) : (r.type === 'donation' ? 'Donation' : 'Other Payment')}</td>
                   <td className="py-2 pr-4">{(r as any).category || (r as any).form_data?.category || ((r as any).form_data?.family_size ? `family_${(r as any).form_data?.family_size}` : 'individual')}</td>
                   <td className="py-2 pr-4">{r.currency || 'NGN'} {Number(r.amount || 0).toLocaleString()}</td>
+                  <td className="py-2 pr-4">
+                    {classLinks[r.id] ? (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded" title={classLinks[r.id]}>✓ Added</span>
+                    ) : (
+                      <span className="text-xs text-[hsl(var(--muted-foreground))]">No link</span>
+                    )}
+                  </td>
                   <td className="py-2 pr-4">{new Date(r.created_at).toLocaleString()}</td>
                   <td className="py-2 pr-4">
                     <div className="flex gap-2">
                       <button className="btn-outline" onClick={() => openEditor(r)} aria-label={`View and edit form for enrollment ${r.id}`}>View Form</button>
-                      <button className="btn-destructive" onClick={() => remove(r.id)}>Delete</button>
+                      <button className="btn-primary" onClick={() => openLinkEditor(r)} aria-label={`Add or edit classroom link for enrollment ${r.id}`}>{classLinks[r.id] ? 'Edit Link' : 'Add Link'}</button>
+                      <button className="btn-destructive" onClick={() => remove(r.id)} aria-label={`Delete enrollment ${r.id}`}>Delete</button>
                     </div>
                   </td>
                 </tr>
@@ -148,6 +224,43 @@ export default function Client({ idParam }: { idParam: string }) {
             <div className="flex items-center justify-end gap-2">
               <button className="btn-outline" onClick={() => setEditing(null)}>Cancel</button>
               <button className="btn-primary" onClick={saveEditor}>Save</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {linkEditing && (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="link-modal-title">
+        <div className="absolute inset-0 bg-black/50" onClick={() => setLinkEditing(null)} aria-hidden="true" />
+        <div className="relative z-10 w-full max-w-lg card">
+          <div className="card-body space-y-4">
+            <div>
+              <h2 id="link-modal-title" className="text-lg font-semibold">Classroom Link</h2>
+              <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">
+                {linkEditing.program_title || `Program ${linkEditing.program_id}`} - Enrollment #{linkEditing.id}
+              </p>
+            </div>
+            <div>
+              <label htmlFor="classroom-link-input" className="block text-sm font-medium mb-2">
+                Classroom URL
+              </label>
+              <input
+                id="classroom-link-input"
+                type="url"
+                className="input w-full"
+                value={linkInput}
+                onChange={(e) => setLinkInput(e.target.value)}
+                placeholder="https://classroom.example.com/course-123"
+                aria-describedby="link-help-text"
+              />
+              <p id="link-help-text" className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
+                Leave empty to remove the link. Students will see a &quot;Join Classroom&quot; button if a link is set.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2">
+              <button className="btn-outline" onClick={() => setLinkEditing(null)}>Cancel</button>
+              <button className="btn-primary" onClick={saveLinkEditor} aria-label="Save classroom link">Save</button>
             </div>
           </div>
         </div>
