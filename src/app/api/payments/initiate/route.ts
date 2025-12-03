@@ -73,13 +73,30 @@ export async function POST(req: NextRequest) {
         .eq('plan_type', 'individual')
         .is('family_size', null)
         .maybeSingle();
-      if (!plan) {
-        return NextResponse.json({ ok: false, error: 'missing_plan' }, { status: 400 });
+
+      if (plan) {
+        amount = Number((plan as any).price || 0);
+        currency = (plan as any).currency || 'NGN';
+        // Persist authoritative amount in success_enroll
+        await admin.from('success_enroll').update({ amount, currency }).eq('id', id);
+      } else {
+        // Fallback to cached amount on success_enroll if available
+        const { data: seRow } = await admin
+          .from('success_enroll')
+          .select('amount,currency')
+          .eq('id', id)
+          .maybeSingle();
+        const cachedAmount = (seRow as any)?.amount as number | null | undefined;
+        if (cachedAmount && Number(cachedAmount) > 0) {
+          amount = Number(cachedAmount);
+          currency = ((seRow as any)?.currency as string | null) || currency || 'NGN';
+        } else {
+          // No pricing information configured for this program payment
+          // eslint-disable-next-line no-console
+          console.error('Program payment missing pricing configuration', { program_id, success_enroll_id: id });
+          return NextResponse.json({ ok: false, error: 'pricing_not_configured' }, { status: 400 });
+        }
       }
-      amount = Number((plan as any).price || 0);
-      currency = (plan as any).currency || 'NGN';
-      // Persist authoritative amount in success_enroll
-      await admin.from('success_enroll').update({ amount, currency }).eq('id', id);
     }
 
     const tx_ref = `se-${id}-${Date.now()}`;

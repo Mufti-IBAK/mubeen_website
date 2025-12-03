@@ -66,6 +66,24 @@ export async function POST(req: NextRequest) {
       },
     };
 
+    // Attempt to cache pricing (amount/currency) from program_plans so future payments are resilient
+    if (program_id) {
+      const { data: plan } = await admin
+        .from('program_plans')
+        .select('price,currency')
+        .eq('program_id', program_id)
+        .eq('plan_type', 'individual')
+        .is('family_size', null)
+        .maybeSingle();
+      if (plan) {
+        const basePrice = Number((plan as any).price ?? 0);
+        if (basePrice > 0) {
+          payload.amount = basePrice;
+          payload.currency = (plan as any).currency || 'NGN';
+        }
+      }
+    }
+
     // Pay-later upsert behavior: reuse existing pending registration for same user and program
     let existingId: number | null = null;
     if (payload.user_id) {
@@ -92,13 +110,18 @@ export async function POST(req: NextRequest) {
     }
 
     if (existingId) {
+      const updatePayload: Record<string, unknown> = {
+        form_data: payload.form_data,
+        user_email: payload.user_email,
+        user_name: payload.user_name,
+      };
+      if (typeof payload.amount !== 'undefined') {
+        updatePayload.amount = payload.amount;
+        updatePayload.currency = payload.currency;
+      }
       const { error: updErr } = await admin
         .from('success_enroll')
-        .update({
-          form_data: payload.form_data,
-          user_email: payload.user_email,
-          user_name: payload.user_name,
-        })
+        .update(updatePayload)
         .eq('id', existingId);
       if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
       return NextResponse.json({ ok: true, id: existingId });

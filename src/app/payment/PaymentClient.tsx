@@ -24,9 +24,20 @@ type FormState = {
   description?: string;
 };
 
+type PendingSe = {
+  id: number;
+  program_id: number | null;
+  program_title: string | null;
+  status: string | null;
+  type: string | null;
+  created_at: string;
+};
+
 export default function PaymentClient() {
   const [programs, setPrograms] = useState<Program[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [pendingSe, setPendingSe] = useState<PendingSe[]>([]);
+  const [selectedSeId, setSelectedSeId] = useState<number | null>(null);
   const [form, setForm] = useState<FormState>({ full_name: '', email: '', selection: '', kind: 'program', program_id: undefined, amount: '', currency: 'NGN', description: '' });
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -54,7 +65,9 @@ export default function PaymentClient() {
           const res = await fetch(`/api/success-enroll/by-id?id=${encodeURIComponent(se)}`, { cache: 'no-store' });
           const seRow = res.ok ? await res.json().catch(() => null) : null;
           if (seRow && seRow.program_id) {
-            setLockedSe(Number(se));
+            const seId = Number(se);
+            setLockedSe(seId);
+            setSelectedSeId(seId);
 
             // Derive amount from individual plan and participant_count with discount
             let amount = seRow.amount as number | null;
@@ -94,12 +107,36 @@ export default function PaymentClient() {
           email: (profileRow as any)?.email || user.email || '',
           ...(preProgram ? { selection: `program:${preProgram}`, program_id: Number(preProgram) } : {}),
         }));
-        const [{ data: programRows }, { data: planRows }] = await Promise.all([
-          supabase.from('programs').select('id,title').order('title', { ascending: true }),
-          supabase.from('program_plans').select('id, program_id, plan_type, family_size, price, currency'),
-        ]);
-        setPrograms((programRows as Program[]) || []);
-        setPlans(((planRows as any[]) || []).map((r) => ({ id: r.id, program_id: r.program_id, plan_type: r.plan_type, family_size: r.family_size, price: Number(r.price || 0), currency: r.currency || 'NGN' })));
+
+        // Load pending success_enroll rows for this user (unpaid program registrations)
+        const { data: seRows } = await supabase
+          .from('success_enroll')
+          .select('id, program_id, program_title, created_at, status, type')
+          .eq('user_id', user.id)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
+        const pending = (seRows as PendingSe[] | null) ?? [];
+        setPendingSe(pending);
+
+        const pendingProgramIds = Array.from(
+          new Set(
+            pending
+              .filter((row) => row.program_id && (row.type === 'program' || !row.type))
+              .map((row) => row.program_id as number),
+          ),
+        );
+
+        if (pendingProgramIds.length === 0) {
+          setPrograms([]);
+          setPlans([]);
+        } else {
+          const [{ data: programRows }, { data: planRows }] = await Promise.all([
+            supabase.from('programs').select('id,title').in('id', pendingProgramIds).order('title', { ascending: true }),
+            supabase.from('program_plans').select('id, program_id, plan_type, family_size, price, currency').in('program_id', pendingProgramIds),
+          ]);
+          setPrograms((programRows as Program[]) || []);
+          setPlans(((planRows as any[]) || []).map((r) => ({ id: r.id, program_id: r.program_id, plan_type: r.plan_type, family_size: r.family_size, price: Number(r.price || 0), currency: r.currency || 'NGN' })));
+        }
       } finally {
         setLoading(false);
       }
@@ -149,11 +186,15 @@ export default function PaymentClient() {
 
   const onSelectionChange = (value: string) => {
     if (value === 'donation') {
+      setSelectedSeId(null);
       setForm((f) => ({ ...f, selection: value, kind: 'donation', program_id: null, amount: '', description: '' }));
     } else if (value === 'other') {
+      setSelectedSeId(null);
       setForm((f) => ({ ...f, selection: value, kind: 'other', program_id: null, amount: '', description: '' }));
     } else if (value.startsWith('program:')) {
       const pid = Number(value.split(':')[1]);
+      const match = pendingSe.find((row) => row.program_id === pid && (row.type === 'program' || !row.type));
+      setSelectedSeId(match ? match.id : null);
       setForm((f) => ({ ...f, selection: value, kind: 'program', program_id: pid }));
     } else {
       setForm((f) => ({ ...f, selection: value }));
@@ -169,10 +210,13 @@ export default function PaymentClient() {
   }, [form]);
 
   const handleSubmit: React.FormEventHandler<HTMLFormElement> = async (e) => {
-    e.preventDefault(); setMessage(''); setSubmitting(true);
+    e.preventDefault();
+    setMessage('');
+    setSubmitting(true);
     try {
-      const cur = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
-      const se = cur.get('se');
+      const cur = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+      const seFromUrl = cur.get('se');
+      const effectiveSe = selectedSeId ? String(selectedSeId) : seFromUrl;
       // Secure summary: POST to tokenizing endpoint which redirects to summary
       const formData = new FormData();
       formData.set('full_name', form.full_name);
@@ -182,7 +226,7 @@ export default function PaymentClient() {
       formData.set('currency', form.currency);
       if (form.program_id) formData.set('program_id', String(form.program_id));
       if (form.kind === 'other' && form.description) formData.set('description', form.description);
-      if (se) formData.set('se', se);
+      if (effectiveSe) formData.set('se', effectiveSe);
       const res = await fetch('/api/payment/summary/create', { method: 'POST', body: formData });
       if (res.redirected) {
         window.location.href = res.url;

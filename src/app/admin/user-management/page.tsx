@@ -53,10 +53,18 @@ export default async function UserManagementPage({ searchParams }: { searchParam
   const raw = (data?.users ?? data ?? []) as SupabaseAuthUser[];
   const users = raw.map(u => ({ id: u.id, email: u.email || '', created_at: u.created_at || '' }));
 
-  // Fetch roles from profiles
-  const { data: roles } = await supabase.from('profiles').select('id, role');
-  const roleMap = new Map((roles || []).map((r: any) => [r.id, r.role]));
-  const usersWithRoles = users.map(u => ({ ...u, role: roleMap.get(u.id) || 'student' }));
+  // Fetch roles and contact info from profiles
+  const { data: profileRows } = await supabase.from('profiles').select('id, role, full_name, phone, email');
+  const profileMap = new Map((profileRows || []).map((r: any) => [r.id, r]));
+  const usersWithRoles = users.map((u) => {
+    const prof = profileMap.get(u.id) as { role?: string; full_name?: string | null; phone?: string | null } | undefined;
+    return {
+      ...u,
+      role: prof?.role || 'student',
+      full_name: prof?.full_name || '',
+      phone: prof?.phone || '',
+    };
+  });
 
   // Apply filters from searchParams (Next 15 Promise)
   const sp = await searchParams;

@@ -1,7 +1,7 @@
 import * as React from "react"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 10000
+const TOAST_REMOVE_DELAY = 3000 // Auto-dismiss after 3 seconds
 
 type ToasterToast = {
   id: string
