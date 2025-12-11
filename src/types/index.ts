@@ -12,11 +12,14 @@ export interface Program {
 // Admin/User domain types
 export type Role = 'student' | 'admin' | 'teacher';
 
-export interface Profile {
   id: string; // uuid
   role: Role;
   months_remaining: number;
   created_at: string;
+  whatsapp_number?: string;
+  email?: string;
+  full_name?: string;
+  phone?: string;
 }
 
 export interface Course {

@@ -5,15 +5,21 @@ import { HeroIslamic } from "@/components/home/HeroIslamic";
 import { CoreValuesSection } from "@/components/CoreValuesSection";
 import { StatsBand } from "@/components/home/StatsBand";
 import { HighlightCards } from "@/components/home/HighlightCards";
-import { ProgramsShowcase } from "@/components/home/ProgramsShowcase";
 import { CTASection } from "@/components/home/CTASection";
 import { FaqAccordion } from "@/components/FaqAccordion";
+import { CoursesSlider } from "@/components/home/CoursesSlider";
+import { SkillsSlider } from "@/components/home/SkillsSlider";
+import { Program } from "@/components/ProgramCard";
 
 export default async function HomePage() {
   // Fetch testimonials and quotes concurrently
-  const [testimonialsResult, quotesResult] = await Promise.all([
+  const [testimonialsResult, quotesResult, programsResult, plansResult, skillsResult, skillPlansResult] = await Promise.all([
     supabase.from('testimonials').select('*'),
     supabase.from('quotes').select('*'),
+    supabase.from('programs').select('*').order('is_flagship', { ascending: false }),
+    supabase.from('program_plans').select('program_id, price, currency'),
+    supabase.from('skills').select('*').order('is_flagship', { ascending: false }),
+    supabase.from('skill_plans').select('skill_id, price, currency'),
   ]);
 
   if ((testimonialsResult as any)?.error) {
@@ -25,6 +31,46 @@ export default async function HomePage() {
 
   const testimonials: Testimonial[] = ((testimonialsResult as any)?.data ?? []) as Testimonial[];
   const quotes: Quote[] = ((quotesResult as any)?.data ?? []) as Quote[];
+
+  // Prepare programs with prices
+  const rawPrograms = ((programsResult as any)?.data ?? []) as Program[];
+  const plans = ((plansResult as any)?.data ?? []) as any[];
+  const plansMap: Record<number, number> = {};
+  const currencyMap: Record<number, string> = {};
+  
+  if (plans) {
+    plans.forEach((p: any) => {
+      if (!plansMap[p.program_id] || p.price < plansMap[p.program_id]) {
+        plansMap[p.program_id] = p.price;
+        currencyMap[p.program_id] = p.currency;
+      }
+    });
+  }
+
+  const programs = rawPrograms.map(p => ({
+    ...p,
+    price_start: plansMap[p.id] ? `${currencyMap[p.id]} ${plansMap[p.id].toLocaleString()}` : undefined
+  }));
+
+  // Prepare skills with prices
+  const rawSkills = ((skillsResult as any)?.data ?? []) as Program[];
+  const skillPlans = ((skillPlansResult as any)?.data ?? []) as any[];
+  const skillPlansMap: Record<number, number> = {};
+  const skillCurrencyMap: Record<number, string> = {};
+  
+  if (skillPlans) {
+    skillPlans.forEach((p: any) => {
+      if (!skillPlansMap[p.skill_id] || p.price < skillPlansMap[p.skill_id]) {
+        skillPlansMap[p.skill_id] = p.price;
+        skillCurrencyMap[p.skill_id] = p.currency;
+      }
+    });
+  }
+
+  const skills = rawSkills.map(p => ({
+    ...p,
+    price_start: skillPlansMap[p.id] ? `${skillCurrencyMap[p.id]} ${skillPlansMap[p.id].toLocaleString()}` : undefined
+  }));
 
   const faqData = [
     {
@@ -51,7 +97,8 @@ export default async function HomePage() {
       <StatsBand />
       <CoreValuesSection />
       <HighlightCards />
-      <ProgramsShowcase />
+      <CoursesSlider programs={programs} />
+      {skills.length > 0 && <SkillsSlider programs={skills} />}
       <TestimonialSlider testimonials={testimonials} quotes={quotes} />
 
       {/* Homepage FAQ */}

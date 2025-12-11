@@ -54,14 +54,13 @@ export async function PUT(
     if (!(await ensureAdmin(req)))
       return NextResponse.json({ error: "forbidden" }, { status: 403 });
     const { id } = await params;
-    const program_id = Number(id);
-    if (!program_id || Number.isNaN(program_id))
+    const skill_id = Number(id);
+    if (!skill_id || Number.isNaN(skill_id))
       return NextResponse.json({ error: "invalid_id" }, { status: 400 });
 
     const body = await req.json().catch(() => ({}));
     const price = Number(body?.price || 0);
     const currency = String(body?.currency || "NGN");
-
     const subscription_type = String(body?.subscription_type || "monthly");
 
     const url = env("NEXT_PUBLIC_SUPABASE_URL");
@@ -70,7 +69,7 @@ export async function PUT(
 
     // Upsert individual plan (family_size null)
     const existingRes = await fetch(
-      `${url}/rest/v1/program_plans?program_id=eq.${program_id}&plan_type=eq.individual&family_size=is.null&select=id`,
+      `${url}/rest/v1/skill_plans?skill_id=eq.${skill_id}&plan_type=eq.individual&family_size=is.null&select=id`,
       {
         headers: {
           apikey: service as string,
@@ -82,7 +81,7 @@ export async function PUT(
     const existing = existingRes.ok ? await existingRes.json() : [];
     if (existing?.[0]?.id) {
       const up = await fetch(
-        `${url}/rest/v1/program_plans?id=eq.${existing[0].id}`,
+        `${url}/rest/v1/skill_plans?id=eq.${existing[0].id}`,
         {
           method: "PATCH",
           headers: {
@@ -93,7 +92,6 @@ export async function PUT(
           body: JSON.stringify({
             price,
             currency,
-
             subscription_type,
           }),
         }
@@ -101,7 +99,7 @@ export async function PUT(
       if (!up.ok)
         return NextResponse.json({ error: "update_failed" }, { status: 500 });
     } else {
-      const ins = await fetch(`${url}/rest/v1/program_plans`, {
+      const ins = await fetch(`${url}/rest/v1/skill_plans`, {
         method: "POST",
         headers: {
           apikey: service as string,
@@ -109,12 +107,11 @@ export async function PUT(
           "content-type": "application/json",
         },
         body: JSON.stringify({
-          program_id,
+          skill_id,
           plan_type: "individual",
           family_size: null,
           price,
           currency,
-
           subscription_type,
         }),
       });
@@ -124,6 +121,7 @@ export async function PUT(
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
+    console.error("Plan update error:", e);
     return NextResponse.json(
       { error: e?.message || "server_error" },
       { status: 500 }

@@ -54,15 +54,16 @@ export default async function UserManagementPage({ searchParams }: { searchParam
   const users = raw.map(u => ({ id: u.id, email: u.email || '', created_at: u.created_at || '' }));
 
   // Fetch roles and contact info from profiles
-  const { data: profileRows } = await supabase.from('profiles').select('id, role, full_name, phone, email');
+  const { data: profileRows } = await supabase.from('profiles').select('id, role, full_name, phone, whatsapp_number, email');
   const profileMap = new Map((profileRows || []).map((r: any) => [r.id, r]));
   const usersWithRoles = users.map((u) => {
-    const prof = profileMap.get(u.id) as { role?: string; full_name?: string | null; phone?: string | null } | undefined;
+    const prof = profileMap.get(u.id) as { role?: string; full_name?: string | null; phone?: string | null; whatsapp_number?: string | null } | undefined;
     return {
       ...u,
       role: prof?.role || 'student',
       full_name: prof?.full_name || '',
       phone: prof?.phone || '',
+      whatsapp_number: prof?.whatsapp_number || '',
     };
   });
 

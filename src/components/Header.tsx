@@ -34,9 +34,11 @@ export const Header = () => {
     const navLinks = [
       { name: 'Home', href: '/', desc: 'Back to homepage' },
       { name: 'Programs', href: '/programs', desc: 'All learning programs' },
+      { name: 'Skill Up', href: '/skill-up', desc: 'Master new skills' },
       { name: 'Resources', href: '/resources', desc: 'Downloadable resources' },
       { name: 'Payments', href: '/payment', desc: 'Make a payment' },
-      { name: 'About', href: '/about', desc: 'Learn about us' }
+      { name: 'About', href: '/about', desc: 'Learn about us' },
+      { name: 'Quick Guide', href: '/quick-guide', desc: 'Help & Tips' }
     ];
 
   useGSAP(() => {

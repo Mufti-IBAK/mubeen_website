@@ -14,7 +14,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [email, setEmail] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [profile, setProfile] = useState<{ full_name?: string; phone?: string; country?: string; dark_mode?: boolean; months_remaining?: number; role?: string; updated_at?: string } | null>(null);
+  const [profile, setProfile] = useState<{ full_name?: string; phone?: string; whatsapp_number?: string; country?: string; dark_mode?: boolean; months_remaining?: number; role?: string; updated_at?: string } | null>(null);
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [programsMap, setProgramsMap] = useState<Record<number, { id: number; title: string; slug?: string }>>({});
   const [loading, setLoading] = useState(true);
@@ -40,7 +40,7 @@ export default function DashboardPage() {
     if (!user) { setLoading(false); return; }
     setEmail(user.email ?? null);
     setUserId(user.id);
-    const { data: p } = await supabase.from('profiles').select('full_name, phone, country, dark_mode, months_remaining, role, updated_at').eq('id', user.id).single();
+    const { data: p } = await supabase.from('profiles').select('full_name, phone, whatsapp_number, country, dark_mode, months_remaining, role, updated_at').eq('id', user.id).single();
     setProfile((p as any) || null);
     // load enrollments
     const { data: enr } = await supabase
@@ -265,12 +265,17 @@ export default function DashboardPage() {
 
       </div>
 
-      {showProfileModal && (
+      {(showProfileModal || (!loading && profile && !profile.whatsapp_number)) && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowProfileModal(false)} />
+          <div className="absolute inset-0 bg-black/50" onClick={() => { if (profile?.whatsapp_number) setShowProfileModal(false); }} />
           <div className="relative z-10 w-full max-w-md card">
             <div className="card-body">
               <h3 className="text-lg font-semibold mb-3">Update Profile</h3>
+              {!profile?.whatsapp_number && (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded text-sm text-amber-800">
+                  <strong>Action Required:</strong> Please provide a working WhatsApp number to continue using the dashboard.
+                </div>
+              )}
               <ProfileUpdateForm initial={profile || {}} onUpdated={(p) => { setProfile(p); setShowProfileModal(false); }} />
             </div>
           </div>
@@ -280,9 +285,10 @@ export default function DashboardPage() {
   );
 }
 
-function ProfileUpdateForm({ initial, onUpdated }: { initial: { full_name?: string; phone?: string; country?: string; email?: string; updated_at?: string }; onUpdated: (p: any) => void }) {
+function ProfileUpdateForm({ initial, onUpdated }: { initial: { full_name?: string; phone?: string; whatsapp_number?: string; country?: string; email?: string; updated_at?: string }; onUpdated: (p: any) => void }) {
   const [fullName, setFullName] = useState(initial.full_name || '');
   const [phone, setPhone] = useState(initial.phone || '');
+  const [whatsappNumber, setWhatsappNumber] = useState(initial.whatsapp_number || '');
   const [country, setCountry] = useState(initial.country || '');
   const [email, setEmail] = useState((initial as any).email || '');
   const [saving, setSaving] = useState(false);
@@ -297,13 +303,18 @@ function ProfileUpdateForm({ initial, onUpdated }: { initial: { full_name?: stri
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
     if (user) {
-      const { error } = await supabase.from('profiles').update({ full_name: fullName, phone, country, email }).eq('id', user.id);
+      if (!whatsappNumber) {
+        setMsg('WhatsApp number is required.');
+        setSaving(false);
+        return;
+      }
+      const { error } = await supabase.from('profiles').update({ full_name: fullName, phone, whatsapp_number: whatsappNumber, country, email }).eq('id', user.id);
       if (error) {
         setMsg(error.message);
       } else {
         setMsg('Saved');
         // Re-fetch updated profile and notify parent
-        const { data: p2 } = await supabase.from('profiles').select('full_name, phone, country, dark_mode, months_remaining, role, updated_at').eq('id', user.id).single();
+        const { data: p2 } = await supabase.from('profiles').select('full_name, phone, whatsapp_number, country, dark_mode, months_remaining, role, updated_at').eq('id', user.id).single();
         onUpdated(p2 || {});
       }
     }
@@ -314,6 +325,7 @@ function ProfileUpdateForm({ initial, onUpdated }: { initial: { full_name?: stri
     <form onSubmit={save} className="grid grid-cols-1 gap-3">
       <input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Full Name" className="input" />
       <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Phone" className="input" />
+      <input value={whatsappNumber} onChange={(e) => setWhatsappNumber(e.target.value)} placeholder="WhatsApp Number (Required)" className={`input ${!whatsappNumber ? 'border-amber-400 focus:border-amber-500' : ''}`} required />
       <input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Country" className="input" />
       <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="input" />
       <button disabled={saving} className="btn-primary">{saving ? 'Saving…' : 'Save Profile'}</button>

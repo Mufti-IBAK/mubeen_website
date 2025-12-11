@@ -43,11 +43,15 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
             <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
               <div className="lg:col-span-2">
                 <h2 className="mb-4 text-2xl font-bold text-brand-dark font-heading">Program Overview</h2>
-                <p className="leading-relaxed text-brand-dark/80">{program.overview || program.description}</p>
+                {program.overview ? (
+                  <div className="prose max-w-none prose-emerald prose-lg text-brand-dark/80 prose-headings:font-heading prose-headings:font-bold prose-p:leading-relaxed prose-li:marker:text-brand-primary [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5" dangerouslySetInnerHTML={{ __html: program.overview }} />
+                ) : (
+                  <p className="leading-relaxed text-brand-dark/80">{program.description}</p>
+                )}
                 {program.prerequisites && (
                   <div className="mt-4">
                     <h3 className="mb-2 text-lg font-semibold text-brand-dark font-heading">Prerequisites</h3>
-                    <p className="leading-relaxed text-brand-dark/80">{program.prerequisites}</p>
+                    <div className="prose max-w-none prose-emerald text-brand-dark/80 prose-li:marker:text-brand-primary [&>ul]:list-disc [&>ul]:pl-5 [&>ol]:list-decimal [&>ol]:pl-5" dangerouslySetInnerHTML={{ __html: program.prerequisites }} />
                   </div>
                 )}
                 {program.outcomes && program.outcomes.length > 0 && (

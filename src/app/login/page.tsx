@@ -12,7 +12,7 @@ export default function LoginPage() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [country, setCountry] = useState("");
-  const [mode, setMode] = useState<"login" | "signup">('login');
+  const [mode, setMode] = useState<"login" | "signup">("login");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -20,12 +20,12 @@ export default function LoginPage() {
   const [nextDest, setNextDest] = React.useState<string | null>(null);
 
   React.useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
-      const m = params.get('mode');
-      if (m === 'signup') setMode('signup');
-      const n = params.get('next');
-      if (n && n.startsWith('/')) setNextDest(n);
+      const m = params.get("mode");
+      if (m === "signup") setMode("signup");
+      const n = params.get("next");
+      if (n && n.startsWith("/")) setNextDest(n);
     }
   }, []);
 
@@ -35,50 +35,70 @@ export default function LoginPage() {
     setMessage("");
     try {
       if (mode === "login") {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
         if (error) throw error;
         // Update profile metadata to ensure name/email show everywhere
         const { data: userData } = await supabase.auth.getUser();
         const user = userData.user;
         if (user) {
-          const meta: Record<string, unknown> = user.user_metadata || {} as Record<string, unknown>;
-          const full_name = (meta['full_name'] as string) || (meta['name'] as string) || null;
-          await supabase.from('profiles').upsert({ id: user.id, email: user.email, full_name }, { onConflict: 'id' });
+          const meta: Record<string, unknown> =
+            user.user_metadata || ({} as Record<string, unknown>);
+          const full_name =
+            (meta["full_name"] as string) || (meta["name"] as string) || null;
+          await supabase
+            .from("profiles")
+            .upsert(
+              { id: user.id, email: user.email, full_name },
+              { onConflict: "id" }
+            );
         }
         // Decide destination by role
         let dest = "/dashboard";
         if (user) {
-          const { data: prof } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+          const { data: prof } = await supabase
+            .from("profiles")
+            .select("role")
+            .eq("id", user.id)
+            .single();
           const role = (prof as { role?: string } | null)?.role;
-          if (role === 'admin' || role === 'super_admin') dest = "/admin";
+          if (role === "admin" || role === "super_admin") dest = "/admin";
         }
         setMessage("Logged in. Redirecting...");
         const to = nextDest || dest;
         window.location.href = to;
       } else {
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-          throw new Error('Please enter a valid email address');
+          throw new Error("Please enter a valid email address");
         }
+        if (!phone.trim()) throw new Error("Phone number is required");
         if (password.length < 6) {
-          throw new Error('Password must be at least 6 characters');
+          throw new Error("Password must be at least 6 characters");
         }
         if (password !== confirmPassword) {
-          throw new Error('Passwords do not match');
+          throw new Error("Passwords do not match");
         }
-        const { error } = await supabase.auth.signUp({ 
-          email, 
-          password, 
-          options: { 
-            data: { full_name: fullName, phone, country }, 
-            emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined 
-          } 
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { full_name: fullName, phone, country },
+            emailRedirectTo:
+              typeof window !== "undefined"
+                ? `${window.location.origin}/auth/callback`
+                : undefined,
+          },
         });
         if (error) throw error;
-        setMessage("Sign up successful! Please check your email to confirm your account.");
+        setMessage(
+          "Sign up successful! Please check your email to confirm your account."
+        );
         setMode("login");
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error';
+      const msg = err instanceof Error ? err.message : "Error";
       setMessage(msg);
     } finally {
       setLoading(false);
@@ -93,72 +113,191 @@ export default function LoginPage() {
             {mode === "login" ? "Sign in" : "Create your account"}
           </h1>
           <form onSubmit={handleSubmit} className="space-y-4">
-            {mode === 'signup' && (
+            {mode === "signup" && (
               <>
                 <div>
-                  <label htmlFor="fullName" className="block text-sm mb-1">Full Name</label>
-                  <input id="fullName" name="fullName" value={fullName} onChange={(e) => setFullName(e.target.value)} required className="input" />
+                  <label htmlFor="fullName" className="block text-sm mb-1">
+                    Full Name
+                  </label>
+                  <input
+                    id="fullName"
+                    name="fullName"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required
+                    className="input"
+                  />
                 </div>
                 <div>
-                  <label htmlFor="phone" className="block text-sm mb-1">Phone</label>
-                  <input id="phone" name="phone" value={phone} onChange={(e) => setPhone(e.target.value)} className="input" />
+                  <label htmlFor="phone" className="block text-sm mb-1">
+                    Phone
+                  </label>
+                  <input
+                    id="phone"
+                    name="phone"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    required
+                    className="input"
+                  />
                 </div>
                 <div>
-                  <label htmlFor="country" className="block text-sm mb-1">Country</label>
-                  <input id="country" name="country" value={country} onChange={(e) => setCountry(e.target.value)} className="input" />
+                  <label htmlFor="country" className="block text-sm mb-1">
+                    Country
+                  </label>
+                  <input
+                    id="country"
+                    name="country"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    className="input"
+                  />
                 </div>
               </>
             )}
             <div>
-              <label htmlFor="email" className="block text-sm mb-1">Email</label>
-              <input id="email" name="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required className="input" />
+              <label htmlFor="email" className="block text-sm mb-1">
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="input"
+              />
             </div>
             <div>
-              <label htmlFor="password" className="block text-sm mb-1">Password</label>
+              <label htmlFor="password" className="block text-sm mb-1">
+                Password
+              </label>
               <div className="relative">
-                <input id="password" name="password" type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} required className="input pr-10" />
-                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-[hsl(var(--muted-foreground))]">{showPassword ? 'Hide' : 'Show'}</button>
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="input pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-[hsl(var(--muted-foreground))]"
+                >
+                  {showPassword ? "Hide" : "Show"}
+                </button>
               </div>
             </div>
-            {mode === 'signup' && (
+            {mode === "signup" && (
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm mb-1">Confirm Password</label>
-                <input id="confirmPassword" name="confirmPassword" type={showPassword ? 'text' : 'password'} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required className="input" />
+                <label htmlFor="confirmPassword" className="block text-sm mb-1">
+                  Confirm Password
+                </label>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showPassword ? "text" : "password"}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  required
+                  className="input"
+                />
               </div>
             )}
-            <button type="submit" disabled={loading} className="btn-primary w-full">
-              {loading ? "Please wait…" : mode === "login" ? "Sign in" : "Create account"}
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full"
+            >
+              {loading
+                ? "Please wait…"
+                : mode === "login"
+                ? "Sign in"
+                : "Create account"}
             </button>
           </form>
-          {message && <p className="text-center text-sm mt-4 text-[hsl(var(--muted-foreground))]">{message}</p>}
+          {message && (
+            <p className="text-center text-sm mt-4 text-[hsl(var(--muted-foreground))]">
+              {message}
+            </p>
+          )}
 
           <div className="text-center mt-3 text-sm">
-            {mode === 'login' && (
-              <button className="text-[hsl(var(--primary))]" onClick={async () => {
-                if (!email) { setMessage('Enter your email above first'); return; }
-                setMessage('Sending reset link...');
-                const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/reset-password` : undefined });
-                setMessage(error ? error.message : 'Check your email for the password reset link.');
-              }}>Forgot password?</button>
+            {mode === "login" && (
+              <button
+                className="text-[hsl(var(--primary))]"
+                onClick={async () => {
+                  if (!email) {
+                    setMessage("Enter your email above first");
+                    return;
+                  }
+                  setMessage("Sending reset link...");
+                  const { error } = await supabase.auth.resetPasswordForEmail(
+                    email,
+                    {
+                      redirectTo:
+                        typeof window !== "undefined"
+                          ? `${window.location.origin}/reset-password`
+                          : undefined,
+                    }
+                  );
+                  setMessage(
+                    error
+                      ? error.message
+                      : "Check your email for the password reset link."
+                  );
+                }}
+              >
+                Forgot password?
+              </button>
             )}
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-3">
             <button
               type="button"
-              onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined } })}
+              onClick={() =>
+                supabase.auth.signInWithOAuth({
+                  provider: "google",
+                  options: {
+                    redirectTo:
+                      typeof window !== "undefined"
+                        ? `${window.location.origin}/auth/callback`
+                        : undefined,
+                  },
+                })
+              }
               className="btn-outline w-full"
             >
               Continue with Google
             </button>
-            {mode === 'login' && (
+            {mode === "login" && (
               <button
                 type="button"
                 onClick={async () => {
-                  if (!email) { setMessage('Enter your email above first'); return; }
-                  setMessage('Sending magic link...');
-                  const { error } = await supabase.auth.signInWithOtp({ email, options: { emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/auth/callback` : undefined } });
-                  setMessage(error ? error.message : 'Check your email for a magic sign-in link.');
+                  if (!email) {
+                    setMessage("Enter your email above first");
+                    return;
+                  }
+                  setMessage("Sending magic link...");
+                  const { error } = await supabase.auth.signInWithOtp({
+                    email,
+                    options: {
+                      emailRedirectTo:
+                        typeof window !== "undefined"
+                          ? `${window.location.origin}/auth/callback`
+                          : undefined,
+                    },
+                  });
+                  setMessage(
+                    error
+                      ? error.message
+                      : "Check your email for a magic sign-in link."
+                  );
                 }}
                 className="btn-outline w-full"
               >
@@ -169,9 +308,19 @@ export default function LoginPage() {
 
           <div className="text-center mt-6 text-sm">
             {mode === "login" ? (
-              <button className="text-[hsl(var(--primary))]" onClick={() => setMode("signup")}>Need an account? Create one</button>
+              <button
+                className="text-[hsl(var(--primary))]"
+                onClick={() => setMode("signup")}
+              >
+                Need an account? Create one
+              </button>
             ) : (
-              <button className="text-[hsl(var(--primary))]" onClick={() => setMode("login")}>Already have an account? Sign in</button>
+              <button
+                className="text-[hsl(var(--primary))]"
+                onClick={() => setMode("login")}
+              >
+                Already have an account? Sign in
+              </button>
             )}
           </div>
           <div className="text-center mt-4">
@@ -182,4 +331,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

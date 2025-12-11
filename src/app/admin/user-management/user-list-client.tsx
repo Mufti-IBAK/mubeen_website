@@ -1,15 +1,25 @@
 "use client";
 
-import React from 'react';
-import { supabase } from '@/lib/supabaseClient';
+import React from "react";
+import { supabase } from "@/lib/supabaseClient";
 
-type UserRec = { id: string; email: string; created_at?: string; role: string; full_name?: string; phone?: string };
+type UserRec = {
+  id: string;
+  email: string;
+  created_at?: string;
+  role: string;
+  full_name?: string;
+  phone?: string;
+  whatsapp_number?: string;
+};
 
 export default function UserListClient({ users }: { users: UserRec[] }) {
   const [rows, setRows] = React.useState<UserRec[]>(users);
-  const [msg, setMsg] = React.useState('');
+  const [msg, setMsg] = React.useState("");
   // Track pending role changes: userId -> newRole
-  const [pendingChanges, setPendingChanges] = React.useState<Record<string, string>>({});
+  const [pendingChanges, setPendingChanges] = React.useState<
+    Record<string, string>
+  >({});
   // Track which users are currently being saved
   const [saving, setSaving] = React.useState<Record<string, boolean>>({});
   const [exporting, setExporting] = React.useState(false);
@@ -18,7 +28,7 @@ export default function UserListClient({ users }: { users: UserRec[] }) {
    * Handle role dropdown change - store in pending state
    */
   const handleRoleChange = (id: string, newRole: string) => {
-    setPendingChanges(prev => ({ ...prev, [id]: newRole }));
+    setPendingChanges((prev) => ({ ...prev, [id]: newRole }));
   };
 
   /**
@@ -28,29 +38,36 @@ export default function UserListClient({ users }: { users: UserRec[] }) {
     const newRole = pendingChanges[id];
     if (!newRole) return;
 
-    setMsg('');
-    setSaving(prev => ({ ...prev, [id]: true }));
+    setMsg("");
+    setSaving((prev) => ({ ...prev, [id]: true }));
 
     try {
-      const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', id);
-      
+      const { error } = await supabase
+        .from("profiles")
+        .update({ role: newRole })
+        .eq("id", id);
+
       if (error) {
         setMsg(`Failed to update role: ${error.message}`);
       } else {
         // Update local state to reflect the saved role
-        setRows(rows.map(r => r.id === id ? { ...r, role: newRole } : r));
+        setRows(rows.map((r) => (r.id === id ? { ...r, role: newRole } : r)));
         // Remove from pending changes
-        setPendingChanges(prev => {
+        setPendingChanges((prev) => {
           const updated = { ...prev };
           delete updated[id];
           return updated;
         });
-        setMsg(`Role updated successfully for ${rows.find(r => r.id === id)?.email || 'user'}`);
+        setMsg(
+          `Role updated successfully for ${
+            rows.find((r) => r.id === id)?.email || "user"
+          }`
+        );
       }
     } catch (e) {
-      setMsg('An error occurred while updating the role');
+      setMsg("An error occurred while updating the role");
     } finally {
-      setSaving(prev => ({ ...prev, [id]: false }));
+      setSaving((prev) => ({ ...prev, [id]: false }));
     }
   };
 
@@ -61,15 +78,23 @@ export default function UserListClient({ users }: { users: UserRec[] }) {
     if (!rows.length) return;
     try {
       setExporting(true);
-      const header = ['Full Name', 'Email', 'Phone', 'Role', 'Created At'];
+      const header = [
+        "Full Name",
+        "Email",
+        "Phone",
+        "WhatsApp",
+        "Role",
+        "Created At",
+      ];
       const lines: string[][] = [header];
       rows.forEach((u) => {
         const cols = [
-          u.full_name || '',
-          u.email || '',
-          u.phone || '',
-          u.role || '',
-          u.created_at || '',
+          u.full_name || "",
+          u.email || "",
+          u.phone || "",
+          u.whatsapp_number || "",
+          u.role || "",
+          u.created_at || "",
         ];
         lines.push(cols);
       });
@@ -77,20 +102,20 @@ export default function UserListClient({ users }: { users: UserRec[] }) {
         .map((cols) =>
           cols
             .map((value) => {
-              const v = String(value ?? '');
+              const v = String(value ?? "");
               if (/[",\n]/.test(v)) {
                 return `"${v.replace(/"/g, '""')}"`;
               }
               return v;
             })
-            .join(','),
+            .join(",")
         )
-        .join('\r\n');
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        .join("\r\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = 'users-contacts.csv';
+      a.download = "users-contacts.csv";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -101,39 +126,94 @@ export default function UserListClient({ users }: { users: UserRec[] }) {
   }, [rows]);
 
   /**
+   * Export all user contacts from database via RPC (if available) or fall back to visible rows
+   */
+  const exportTxt = React.useCallback(async () => {
+    try {
+      setExporting(true);
+      
+      // Try to fetch from the comprehensive RPC first
+      const { data: allContacts, error } = await supabase.rpc('get_all_user_contacts_v2');
+      
+      let lines: string[] = [];
+
+      if (!error && allContacts && allContacts.length > 0) {
+        // RPC worked and returned data
+        lines = (allContacts as any[]).map(c => 
+          `Name: ${c.full_name || 'N/A'}\n` +
+          `Email: ${c.email || 'N/A'}\n` +
+          `Phone: ${c.phone || 'N/A'}\n` +
+          `Source: ${c.source_table || 'N/A'}\n` +
+          `----------------------------------------`
+        );
+      } else {
+        // Fallback to client-side rows if RPC not present or empty
+        console.warn('RPC get_all_user_contacts_v2 failed or empty, falling back to visible rows', error);
+        lines = rows.map((u) => (
+          `Name: ${u.full_name || 'N/A'}\n` +
+          `Email: ${u.email || 'N/A'}\n` +
+          `Phone: ${u.phone || 'N/A'}\n` +
+          `WhatsApp: ${u.whatsapp_number || 'N/A'}\n` +
+          `----------------------------------------`
+        ));
+      }
+
+      const txt = lines.join('\n');
+      const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'all-users-contacts-comprehensive.txt';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Export failed', err);
+      alert('Failed to export contacts');
+    } finally {
+      setExporting(false);
+    }
+  }, [rows]);
+
+  /**
    * Delete a user account (admin only)
    */
   const deleteUser = async (id: string) => {
-    setMsg('');
-    if (!confirm('Delete this auth user? This cannot be undone.')) return;
-    
-    const res = await fetch('/api/admin/delete-user', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
+    setMsg("");
+    if (!confirm("Delete this auth user? This cannot be undone.")) return;
+
+    const res = await fetch("/api/admin/delete-user", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
       body: JSON.stringify({ id }),
     });
-    
-    if (!res.ok) { 
-      setMsg('Failed to delete user'); 
-      return; 
+
+    if (!res.ok) {
+      setMsg("Failed to delete user");
+      return;
     }
-    
+
     // Remove from local state
-    setRows(rows.filter(r => r.id !== id));
+    setRows(rows.filter((r) => r.id !== id));
     // Remove any pending changes for this user
-    setPendingChanges(prev => {
+    setPendingChanges((prev) => {
       const updated = { ...prev };
       delete updated[id];
       return updated;
     });
-    setMsg('User deleted successfully');
+    setMsg("User deleted successfully");
   };
 
   return (
     <div className="card">
       <div className="card-body">
         {msg && (
-          <div className="mb-3 p-3 rounded bg-[hsl(var(--muted))] border border-[hsl(var(--border))]" role="status" aria-live="polite">
+          <div
+            className="mb-3 p-3 rounded bg-[hsl(var(--muted))] border border-[hsl(var(--border))]"
+            role="status"
+            aria-live="polite"
+          >
             <p className="text-sm">{msg}</p>
           </div>
         )}
@@ -145,25 +225,46 @@ export default function UserListClient({ users }: { users: UserRec[] }) {
             disabled={!rows.length || exporting}
             aria-label="Download user contacts as CSV"
           >
-            {exporting ? 'Preparing CSV…' : 'Download contacts (CSV)'}
+            {exporting ? "Preparing CSV…" : "Download contacts (CSV)"}
+          </button>
+          <button
+            type="button"
+            onClick={exportTxt}
+            className="btn-outline ml-2"
+            disabled={!rows.length || exporting}
+            aria-label="Download user contacts as Text file"
+          >
+            {exporting ? "Preparing TXT…" : "Download contacts (TXT)"}
           </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {rows.map(u => {
+          {rows.map((u) => {
             const hasPendingChange = pendingChanges[u.id] !== undefined;
             const currentRole = pendingChanges[u.id] || u.role;
             const isSaving = saving[u.id] || false;
 
             return (
-              <article key={u.id} className="border border-[hsl(var(--border))] rounded-xl p-4 bg-[hsl(var(--card))] shadow-sm">
+              <article
+                key={u.id}
+                className="border border-[hsl(var(--border))] rounded-xl p-4 bg-[hsl(var(--card))] shadow-sm"
+              >
                 {/* User Info */}
                 <div className="mb-3">
                   <h3 className="font-semibold text-base">{u.email || u.id}</h3>
                   {u.full_name && (
-                    <p className="text-sm text-[hsl(var(--muted-foreground))]">Name: {u.full_name}</p>
+                    <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                      Name: {u.full_name}
+                    </p>
                   )}
                   {u.phone && (
-                    <p className="text-sm text-[hsl(var(--muted-foreground))]">Phone: {u.phone}</p>
+                    <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                      Phone: {u.phone}
+                    </p>
+                  )}
+                  {u.whatsapp_number && (
+                    <p className="text-sm text-green-600 font-medium">
+                      WhatsApp: {u.whatsapp_number}
+                    </p>
                   )}
                   {u.created_at && (
                     <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
@@ -174,13 +275,16 @@ export default function UserListClient({ users }: { users: UserRec[] }) {
 
                 {/* Role Selection */}
                 <div className="mb-3">
-                  <label htmlFor={`role-select-${u.id}`} className="block text-sm font-medium mb-1">
+                  <label
+                    htmlFor={`role-select-${u.id}`}
+                    className="block text-sm font-medium mb-1"
+                  >
                     Role
                   </label>
-                  <select 
+                  <select
                     id={`role-select-${u.id}`}
-                    value={currentRole} 
-                    onChange={(e) => handleRoleChange(u.id, e.target.value)} 
+                    value={currentRole}
+                    onChange={(e) => handleRoleChange(u.id, e.target.value)}
                     className="select w-full"
                     disabled={isSaving}
                     aria-label={`Select role for ${u.email || u.id}`}
@@ -195,18 +299,20 @@ export default function UserListClient({ users }: { users: UserRec[] }) {
                 {/* Action Buttons */}
                 <div className="flex items-center gap-2">
                   {hasPendingChange && (
-                    <button 
-                      onClick={() => saveRoleChange(u.id)} 
+                    <button
+                      onClick={() => saveRoleChange(u.id)}
                       className="btn-primary flex-1"
                       disabled={isSaving}
                       aria-label={`Save role change for ${u.email || u.id}`}
                     >
-                      {isSaving ? 'Saving...' : 'Save'}
+                      {isSaving ? "Saving..." : "Save"}
                     </button>
                   )}
-                  <button 
-                    onClick={() => deleteUser(u.id)} 
-                    className={`btn-destructive ${hasPendingChange ? '' : 'flex-1'}`}
+                  <button
+                    onClick={() => deleteUser(u.id)}
+                    className={`btn-destructive ${
+                      hasPendingChange ? "" : "flex-1"
+                    }`}
                     disabled={isSaving}
                     aria-label={`Delete user ${u.email || u.id}`}
                   >
