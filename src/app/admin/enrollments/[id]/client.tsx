@@ -146,7 +146,7 @@ export default function ClientPage({ id }: { id: number }) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       showMessage('Submission downloaded successfully', 'success');
-    } catch (err) {
+    } catch (_err) {
       showMessage('Error downloading submission', 'error');
     }
   };

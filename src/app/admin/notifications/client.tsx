@@ -1,17 +1,8 @@
 "use client";
 // Notifications feature removed
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { createBrowserClient } from "@supabase/ssr";
-import {
-  FiBell,
-  FiSend,
-  FiUsers,
-  FiUser,
-  FiMessageSquare,
-  FiFileText,
-  FiCopy,
-} from "react-icons/fi";
 
 interface NotificationTemplate {
   id: string;
@@ -63,11 +54,7 @@ export default function NotificationsClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setLoading(true);
     try {
       // Load templates
@@ -90,7 +77,11 @@ export default function NotificationsClient() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [supabase]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const sendNotification = async () => {
     if (!notificationTitle.trim() || !notificationMessage.trim()) {
@@ -106,7 +97,7 @@ export default function NotificationsClient() {
         broadcastType === "admins"
       ) {
         // Send broadcast notification
-        const { data, error } = await supabase.rpc(
+        const { error } = await supabase.rpc(
           "send_broadcast_notification",
           {
             p_title: notificationTitle,
@@ -165,6 +156,8 @@ export default function NotificationsClient() {
     setNotificationPriority(template.priority);
     setActionLabel(template.action_label || "");
     setActiveTab("compose");
+    // Explicitly set broadcast type to all when applying template if not selected
+    if (broadcastType === "selected") setBroadcastType("all"); 
   };
 
   const typeColors = {
@@ -196,10 +189,10 @@ export default function NotificationsClient() {
       {/* Tabs */}
       <div className="flex space-x-1 bg-gray-100 p-1 rounded-lg w-fit">
         {[
-          { key: "compose", label: "Compose", icon: FiSend },
-          { key: "templates", label: "Templates", icon: FiFileText },
-          { key: "history", label: "History", icon: FiMessageSquare },
-        ].map(({ key, label, icon: Icon }) => (
+          { key: "compose", label: "Compose" },
+          { key: "templates", label: "Templates" },
+          { key: "history", label: "History" },
+        ].map(({ key, label }) => (
           <button
             key={key}
             onClick={() => setActiveTab(key as any)}
@@ -209,7 +202,6 @@ export default function NotificationsClient() {
                 : "text-gray-600 hover:text-gray-900"
             }`}
           >
-            <Icon className="h-4 w-4" />
             {label}
           </button>
         ))}
@@ -219,7 +211,6 @@ export default function NotificationsClient() {
       {activeTab === "compose" && (
         <div className="bg-white p-6 rounded-lg border shadow-sm">
           <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-            <FiSend className="h-5 w-5" />
             Compose Notification
           </h2>
 
@@ -233,11 +224,11 @@ export default function NotificationsClient() {
                 </label>
                 <div className="space-y-2">
                   {[
-                    { key: "all", label: "All Users", icon: FiUsers },
-                    { key: "students", label: "Students Only", icon: FiUser },
-                    { key: "admins", label: "Admins Only", icon: FiUser },
-                    { key: "selected", label: "Selected Users", icon: FiUser },
-                  ].map(({ key, label, icon: Icon }) => (
+                    { key: "all", label: "All Users" },
+                    { key: "students", label: "Students Only" },
+                    { key: "admins", label: "Admins Only" },
+                    { key: "selected", label: "Selected Users" },
+                  ].map(({ key, label }) => (
                     <label key={key} className="flex items-center gap-2">
                       <input
                         type="radio"
@@ -249,7 +240,6 @@ export default function NotificationsClient() {
                         }
                         className="text-blue-600"
                       />
-                      <Icon className="h-4 w-4 text-gray-400" />
                       {label}
                     </label>
                   ))}
@@ -412,7 +402,6 @@ export default function NotificationsClient() {
                   </>
                 ) : (
                   <>
-                    <FiSend className="h-4 w-4" />
                     Send Notification
                   </>
                 )}
@@ -427,7 +416,6 @@ export default function NotificationsClient() {
         <div className="bg-white p-6 rounded-lg border shadow-sm">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold flex items-center gap-2">
-              <FiFileText className="h-5 w-5" />
               Notification Templates
             </h2>
           </div>
@@ -472,7 +460,6 @@ export default function NotificationsClient() {
                   onClick={() => applyTemplate(template)}
                   className="w-full text-sm bg-blue-50 text-blue-600 py-1 px-3 rounded hover:bg-blue-100 transition-colors flex items-center justify-center gap-1"
                 >
-                  <FiCopy className="h-3 w-3" />
                   Use Template
                 </button>
               </div>
@@ -485,7 +472,6 @@ export default function NotificationsClient() {
       {activeTab === "history" && (
         <div className="bg-white p-6 rounded-lg border shadow-sm">
           <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
-            <FiMessageSquare className="h-5 w-5" />
             Notification History
           </h2>
           <p className="text-gray-600">
