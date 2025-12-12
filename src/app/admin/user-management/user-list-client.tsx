@@ -64,7 +64,7 @@ export default function UserListClient({ users }: { users: UserRec[] }) {
           }`
         );
       }
-    } catch (e) {
+    } catch (_e) {
       setMsg("An error occurred while updating the role");
     } finally {
       setSaving((prev) => ({ ...prev, [id]: false }));
@@ -131,46 +131,53 @@ export default function UserListClient({ users }: { users: UserRec[] }) {
   const exportTxt = React.useCallback(async () => {
     try {
       setExporting(true);
-      
+
       // Try to fetch from the comprehensive RPC first
-      const { data: allContacts, error } = await supabase.rpc('get_all_user_contacts_v2');
-      
+      const { data: allContacts, error } = await supabase.rpc(
+        "get_all_user_contacts_v2"
+      );
+
       let lines: string[] = [];
 
       if (!error && allContacts && allContacts.length > 0) {
         // RPC worked and returned data
-        lines = (allContacts as any[]).map(c => 
-          `Name: ${c.full_name || 'N/A'}\n` +
-          `Email: ${c.email || 'N/A'}\n` +
-          `Phone: ${c.phone || 'N/A'}\n` +
-          `Source: ${c.source_table || 'N/A'}\n` +
-          `----------------------------------------`
+        lines = (allContacts as any[]).map(
+          (c) =>
+            `Name: ${c.full_name || "N/A"}\n` +
+            `Email: ${c.email || "N/A"}\n` +
+            `Phone: ${c.phone || "N/A"}\n` +
+            `Source: ${c.source_table || "N/A"}\n` +
+            `----------------------------------------`
         );
       } else {
         // Fallback to client-side rows if RPC not present or empty
-        console.warn('RPC get_all_user_contacts_v2 failed or empty, falling back to visible rows', error);
-        lines = rows.map((u) => (
-          `Name: ${u.full_name || 'N/A'}\n` +
-          `Email: ${u.email || 'N/A'}\n` +
-          `Phone: ${u.phone || 'N/A'}\n` +
-          `WhatsApp: ${u.whatsapp_number || 'N/A'}\n` +
-          `----------------------------------------`
-        ));
+        console.warn(
+          "RPC get_all_user_contacts_v2 failed or empty, falling back to visible rows",
+          error
+        );
+        lines = rows.map(
+          (u) =>
+            `Name: ${u.full_name || "N/A"}\n` +
+            `Email: ${u.email || "N/A"}\n` +
+            `Phone: ${u.phone || "N/A"}\n` +
+            `WhatsApp: ${u.whatsapp_number || "N/A"}\n` +
+            `----------------------------------------`
+        );
       }
 
-      const txt = lines.join('\n');
-      const blob = new Blob([txt], { type: 'text/plain;charset=utf-8;' });
+      const txt = lines.join("\n");
+      const blob = new Blob([txt], { type: "text/plain;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = 'all-users-contacts-comprehensive.txt';
+      a.download = "all-users-contacts-comprehensive.txt";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error('Export failed', err);
-      alert('Failed to export contacts');
+      console.error("Export failed", err);
+      alert("Failed to export contacts");
     } finally {
       setExporting(false);
     }

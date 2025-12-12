@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import Link from 'next/link';
+
 
 type Program = { id: number; title: string };
 

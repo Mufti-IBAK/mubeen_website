@@ -10,7 +10,18 @@ import { Toaster } from "@/components/ui/toaster";
 const fontHeading = Exo_2({ subsets: ["latin"], display: 'swap', variable: '--font-heading' });
 const fontBody = Lato({ subsets: ["latin"], display: 'swap', weight: ['400', '700'], variable: '--font-body' });
 
-export const metadata: Metadata = { /* ... */ };
+export const metadata: Metadata = {
+  title: "Mubeen Academy - Online Quran & Islamic Studies",
+  description: "Join Mubeen Academy for comprehensive online Quran and Islamic studies. Expert teachers, flexible schedules, and structured learning for all ages.",
+  keywords: ["Quran", "Islamic Studies", "Online Classes", "Mubeen Academy", "Tajweed", "Hifz"],
+  authors: [{ name: "Mubeen Academy" }],
+  openGraph: {
+    title: "Mubeen Academy - Online Quran & Islamic Studies",
+    description: "Join Mubeen Academy for comprehensive online Quran and Islamic studies.",
+    type: "website",
+    siteName: "Mubeen Academy",
+  },
+};
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode; }>) {
   return (

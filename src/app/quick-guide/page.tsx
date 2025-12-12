@@ -68,7 +68,7 @@ export default function QuickGuidePage() {
               <p>
                 <strong>Programs:</strong> Browse our course catalog. Use
                 filters to find Flagship, Upcoming, or Ongoing courses. Click
-                "View Details" for curriculum and pricing.
+                &quot;View Details&quot; for curriculum and pricing.
               </p>
               <p>
                 <strong>Profile Updates:</strong>{" "}
@@ -100,7 +100,7 @@ export default function QuickGuidePage() {
                 and choose a course.
               </li>
               <li>
-                <strong>Fill the Form:</strong> Click "Register Now". You will
+                <strong>Fill the Form:</strong> Click &quot;Register Now&quot;. You will
                 be asked for personal details. For Family plans, you will add
                 details for each member.
               </li>
@@ -129,7 +129,7 @@ export default function QuickGuidePage() {
             <div className="space-y-4 text-[hsl(var(--muted-foreground))]">
               <p>
                 After registering, you can pay immediately or later via your
-                Dashboard ("Unpaid Enrollments").
+                Dashboard (&quot;Unpaid Enrollments&quot;).
               </p>
               <div className="bg-[hsl(var(--muted))] p-4 rounded-lg text-sm">
                 <strong>Accepted Methods:</strong> Bank Transfer, Card Payment
@@ -158,6 +158,12 @@ export default function QuickGuidePage() {
             </div>
             <div className="grid grid-cols-1 gap-3 text-[hsl(var(--muted-foreground))]">
               <div className="flex items-start gap-2">
+                <h3 className="font-semibold text-gray-900 mb-1">&quot;Forms&quot; Tab</h3>
+                <p className="text-gray-600 text-sm">
+                  Where you customize the questions users must answer (like &quot;Medical Info&quot;,
+                  &quot;Previous Education&quot;, etc.).
+                </p></div>
+              <div className="flex items-start gap-2">
                 <span className="text-green-500 font-bold">✅</span>
                 <p>
                   Always keep your profile updated, especially phone number and
@@ -167,7 +173,7 @@ export default function QuickGuidePage() {
               <div className="flex items-start gap-2">
                 <span className="text-green-500 font-bold">✅</span>
                 <p>
-                  Check the "Resources" tab for free learning materials and
+                  Check the &quot;Resources&quot; tab for free learning materials and
                   guides.
                 </p>
               </div>
