@@ -17,9 +17,14 @@ export async function POST(req: NextRequest) {
     const service = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
     const body = await req.json().catch(() => ({}));
-    const program_id = Number(body?.program_id);
+    const program_id = body?.program_id ? Number(body.program_id) : null;
+    const skill_id = body?.skill_id ? Number(body.skill_id) : null;
+    const type = body?.type === 'skill' ? 'skill' : 'program';
     const form_data = (body?.form_data ?? {}) as Record<string, unknown>;
-    if (!program_id || Number.isNaN(program_id)) return NextResponse.json({ error: 'Invalid program_id' }, { status: 400 });
+
+    if ((!program_id && !skill_id) || (program_id && Number.isNaN(program_id)) || (skill_id && Number.isNaN(skill_id))) {
+       return NextResponse.json({ error: 'Invalid program_id or skill_id' }, { status: 400 });
+    }
 
     const bearer = getBearer(req);
     const cookieStore = await cookies();
@@ -56,8 +61,9 @@ export async function POST(req: NextRequest) {
       user_id: user?.id ?? null,
       user_email: profileEmail || user?.email || formEmail || null,
       user_name: profileFullName || user?.user_metadata?.full_name || formName || null,
-      type: 'program',
-      program_id,
+      type: type, // 'program' or 'skill'
+      program_id: program_id || null,
+      skill_id: skill_id || null,
       status: 'pending',
       form_data: {
         ...form_data,
@@ -66,8 +72,8 @@ export async function POST(req: NextRequest) {
       },
     };
 
-    // Attempt to cache pricing (amount/currency) from program_plans so future payments are resilient
-    if (program_id) {
+    // Attempt to cache pricing (amount/currency) so future payments are resilient
+    if (type === 'program' && program_id) {
       const { data: plan } = await admin
         .from('program_plans')
         .select('price,currency')
@@ -82,30 +88,50 @@ export async function POST(req: NextRequest) {
           payload.currency = (plan as any).currency || 'NGN';
         }
       }
+    } else if (type === 'skill' && skill_id) {
+      const { data: plan } = await admin
+        .from('skill_plans')
+        .select('price,currency')
+        .eq('skill_id', skill_id)
+        .maybeSingle();
+      if (plan) {
+        const basePrice = Number((plan as any).price ?? 0);
+        if (basePrice > 0) {
+           payload.amount = basePrice;
+           payload.currency = (plan as any).currency || 'NGN';
+        }
+      }
     }
 
-    // Pay-later upsert behavior: reuse existing pending registration for same user and program
+    // Pay-later upsert behavior: reuse existing pending registration for same user and entity
     let existingId: number | null = null;
     if (payload.user_id) {
-      const { data: ex } = await admin
+      let q = admin
         .from('success_enroll')
         .select('id')
-        .eq('program_id', program_id)
         .eq('status', 'pending')
         .eq('user_id', payload.user_id)
-        .order('created_at', { ascending: false })
-        .maybeSingle();
+        .eq('type', type);
+      
+      if (program_id) q = q.eq('program_id', program_id);
+      if (skill_id) q = q.eq('skill_id', skill_id);
+        
+      const { data: ex } = await q.order('created_at', { ascending: false }).maybeSingle();
       existingId = (ex as any)?.id ?? null;
     }
+    
     if (!existingId && payload.user_email) {
-      const { data: ex2 } = await admin
+      let q = admin
         .from('success_enroll')
         .select('id')
-        .eq('program_id', program_id)
         .eq('status', 'pending')
         .eq('user_email', payload.user_email)
-        .order('created_at', { ascending: false })
-        .maybeSingle();
+        .eq('type', type);
+
+      if (program_id) q = q.eq('program_id', program_id);
+      if (skill_id) q = q.eq('skill_id', skill_id);
+
+      const { data: ex2 } = await q.order('created_at', { ascending: false }).maybeSingle();
       existingId = (ex2 as any)?.id ?? null;
     }
 

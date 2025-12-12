@@ -1,36 +1,40 @@
-import React from 'react';
-import { supabase } from '@/lib/supabaseClient';
-import { notFound } from 'next/navigation';
-import RegistrationFormClient from './RegistrationFormClient';
+import React from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { notFound } from "next/navigation";
+import RegistrationFormClient from "./RegistrationFormClient";
+// import { defaultSkillUpForm } from '@/lib/templates/skill-up-default';
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
-export default async function RegistrationPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function RegistrationPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
   const { slug } = await params;
 
-  // Fetch program
-  const { data: program, error } = await supabase
-    .from('programs')
-    .select('id, title, slug, description')
-    .eq('slug', slug)
+  // Fetch skill (not program)
+  const { data: skill, error } = await supabase
+    .from("skills")
+    .select("id, title, slug, description")
+    .eq("slug", slug)
     .single();
 
-  if (error || !program) {
+  if (error || !skill) {
     notFound();
   }
 
-  // Fetch form schemas for this program (individual, family_head)
+  // Fetch form schemas for this skill
   const { data: forms } = await supabase
-    .from('program_forms')
-    .select('form_type,schema')
-    .eq('program_id', program.id);
+    .from("skill_forms")
+    .select("form_type,schema")
+    .eq("skill_id", skill.id);
 
+  // If no forms, we could pass null or a default, handled in client
   const schemas: Record<string, any> = {};
-  (forms as any[] | null)?.forEach((r) => { if (r?.form_type && r?.schema) schemas[r.form_type] = r.schema; });
+  (forms as any[] | null)?.forEach((r) => {
+    if (r?.form_type && r?.schema) schemas[r.form_type] = r.schema;
+  });
 
-  return (
-    <RegistrationFormClient
-      program={program as any}
-    />
-  );
+  return <RegistrationFormClient skill={skill as any} />;
 }

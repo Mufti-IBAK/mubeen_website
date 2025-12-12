@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   try {
     if (!(await isAdminFromRequest(req))) return NextResponse.json({ error: 'forbidden' }, { status: 403 });
     const body = await req.json();
-    const scope = (body?.scope === 'program' || body?.scope === 'course') ? body.scope : 'program';
+    const scope = (body?.scope === 'program' || body?.scope === 'course' || body?.scope === 'skill') ? body.scope : 'program';
     const id = Number(body?.id);
     const form_type = String(body?.form_type || 'individual');
     const inputSchema = body?.schema || null;
@@ -66,9 +66,12 @@ export async function POST(req: NextRequest) {
     const anonKey = getEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', process.env.SUPABASE_ANON_KEY);
     const service = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
 
-    const basePath = scope === 'program' ? '/rest/v1/program_forms' : '/rest/v1/course_forms';
+    // Define base path based on scope
+    let basePath = '/rest/v1/program_forms';
+    if (scope === 'course') basePath = '/rest/v1/course_forms';
+    if (scope === 'skill') basePath = '/rest/v1/skill_forms';
 
-    // Ensure schema title matches program/course title when scope is program
+    // Ensure schema title matches program/course/skill title
     let finalSchema = { ...inputSchema };
     if (scope === 'program') {
       const progRes = await fetch(`${supabaseUrl}/rest/v1/programs?id=eq.${id}&select=title`, {
@@ -84,16 +87,33 @@ export async function POST(req: NextRequest) {
           }
         }
       }
+    } else if (scope === 'skill') {
+      const skillRes = await fetch(`${supabaseUrl}/rest/v1/skills?id=eq.${id}&select=title`, {
+        headers: { apikey: service as string, Authorization: `Bearer ${service}` }, cache: 'no-store'
+      });
+      if (skillRes.ok) {
+        const arr = await skillRes.json();
+        const skillTitle = arr?.[0]?.title as string | undefined;
+        if (skillTitle) {
+          const desired = `Register for ${skillTitle}`;
+          if (!finalSchema?.title || finalSchema.title !== desired) {
+            finalSchema = { ...finalSchema, title: desired };
+          }
+        }
+      }
     }
 
-    const payload = scope === 'program'
-      ? { program_id: id, form_type, schema: finalSchema }
-      : { course_id: id, form_type, schema: finalSchema };
+    let payload: any = { form_type, schema: finalSchema };
+    if (scope === 'program') payload.program_id = id;
+    else if (scope === 'course') payload.course_id = id;
+    else if (scope === 'skill') payload.skill_id = id;
 
     // 1) Check if a form row already exists (use service role for robustness)
-    const queryParams = scope === 'program'
-      ? `?select=id&program_id=eq.${id}&form_type=eq.${encodeURIComponent(form_type)}`
-      : `?select=id&course_id=eq.${id}&form_type=eq.${encodeURIComponent(form_type)}`;
+    let queryParams = `?select=id&form_type=eq.${encodeURIComponent(form_type)}`;
+    if (scope === 'program') queryParams += `&program_id=eq.${id}`;
+    else if (scope === 'course') queryParams += `&course_id=eq.${id}`;
+    else if (scope === 'skill') queryParams += `&skill_id=eq.${id}`;
+
     const existsRes = await fetch(`${supabaseUrl}${basePath}${queryParams}`, {
       headers: {
         apikey: service as string,
@@ -126,7 +146,10 @@ export async function POST(req: NextRequest) {
     }
 
     // 2b) Insert new row
-    const onConflict = scope === 'program' ? 'program_id,form_type' : 'course_id,form_type';
+    let onConflict = 'program_id,form_type';
+    if (scope === 'course') onConflict = 'course_id,form_type';
+    if (scope === 'skill') onConflict = 'skill_id,form_type'; // Assuming same constraint naming convention
+
     const insertRes = await fetch(`${supabaseUrl}${basePath}?on_conflict=${onConflict}`, {
       method: 'POST',
       headers: {
