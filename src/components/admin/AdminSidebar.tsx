@@ -4,21 +4,21 @@ import React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 // Assuming these icons are imported from a library like 'lucide-react' or similar
-import { LayoutDashboard, BookOpen, Users, FileText, Settings, AlertCircle, Lightbulb, CreditCard, Globe } from 'lucide-react';
+import { FiLayout, FiBookOpen, FiUsers, FiFileText, FiSettings, FiAlertCircle, FiSun, FiCreditCard, FiGlobe } from 'react-icons/fi';
 
 export const AdminSidebar: React.FC = () => {
   const pathname = usePathname();
   const nav = [
-    { href: "/admin", name: "Dashboard", icon: LayoutDashboard },
-    { name: "Programs", href: "/admin/programs", icon: BookOpen },
-    { name: "Skills", href: "/admin/skills", icon: Lightbulb },
-    { name: "Pricing Plans", href: "/admin/pricing", icon: CreditCard },
-    { name: "Assignments", href: "/admin/assignments", icon: FileText },
-    { name: "Enrollments", href: "/admin/enrollments", icon: Users },
-    { name: "Unpaid", href: "/admin/unpaid_enroll", icon: AlertCircle },
-    { name: "User Management", href: "/admin/user-management", icon: Users },
+    { href: "/admin", name: "Dashboard", icon: FiLayout },
+    { name: "Programs", href: "/admin/programs", icon: FiBookOpen },
+    { name: "Skills", href: "/admin/skills", icon: FiSun },
+    { name: "Pricing Plans", href: "/admin/pricing", icon: FiCreditCard },
+    { name: "Assignments", href: "/admin/assignments", icon: FiFileText },
+    { name: "Enrollments", href: "/admin/enrollments", icon: FiUsers },
+    { name: "Unpaid", href: "/admin/unpaid_enroll", icon: FiAlertCircle },
+    { name: "User Management", href: "/admin/user-management", icon: FiUsers },
     // Public Links
-    { name: "Skill Up (Public)", href: "/skill-up", target: "_blank", icon: Globe },
+    { name: "Skill Up (Public)", href: "/skill-up", target: "_blank", icon: FiGlobe },
   ];
   return (
     <aside className="hidden md:flex md:flex-col md:w-64 bg-white dark:bg-[#0d1528] border-r border-gray-200 dark:border-white/10 min-h-screen p-4 sticky top-0">

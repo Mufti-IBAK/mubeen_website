@@ -17,7 +17,7 @@ export async function POST(req: NextRequest) {
 
     const full_name = required('full_name', body.full_name ?? null);
     const email = required('email', body.email ?? null);
-    const kind = required('kind', body.kind ?? null) as 'program'|'donation'|'other';
+    const kind = required('kind', body.kind ?? null) as 'program'|'donation'|'other'|'skill';
     let amount = Number(required('amount', body.amount ?? null));
     let currency = (body.currency as string) || 'NGN';
     const program_id = body.program_id ? Number(body.program_id) : null;
