@@ -46,9 +46,21 @@ export async function POST(req: NextRequest) {
     let profileFullName: string | null = null;
     let profileEmail: string | null = null;
     if (user?.id) {
-      const { data: prof } = await admin.from('profiles').select('full_name,email').eq('id', user.id).maybeSingle();
+      const { data: prof } = await admin.from('profiles').select('full_name,email,phone,whatsapp_number').eq('id', user.id).maybeSingle();
       profileFullName = (prof as any)?.full_name ?? null;
       profileEmail = (prof as any)?.email ?? null;
+
+      // Update profile if phone/whatsapp is provided in form and missing/different in profile
+      const formPhone = (form_data as any)?.phone || (form_data as any)?.phoneNumber || null;
+      const formWhatsapp = (form_data as any)?.whatsapp || (form_data as any)?.whatsapp_number || null;
+      
+      const updates: any = {};
+      if (formPhone && formPhone !== (prof as any)?.phone) updates.phone = formPhone;
+      if (formWhatsapp && formWhatsapp !== (prof as any)?.whatsapp_number) updates.whatsapp_number = formWhatsapp;
+      
+      if (Object.keys(updates).length > 0) {
+        await admin.from('profiles').update(updates).eq('id', user.id);
+      }
     }
 
     const formEmail = (form_data as any)?.email || (form_data as any)?.user_email || null;
@@ -72,33 +84,25 @@ export async function POST(req: NextRequest) {
       },
     };
 
-    // Attempt to cache pricing (amount/currency) so future payments are resilient
-    if (type === 'program' && program_id) {
+    // Unified Pricing Check (pricing_plans)
+    // We check for a matching entity_type and entity_id (and default 'individual'/'monthly' implied or explicit)
+    // Since we simplified the schema to just ID/Type, we query directly.
+    if ((type === 'program' && program_id) || (type === 'skill' && skill_id)) {
+      const eid = (type === 'program' ? program_id : skill_id) as number;
+      
       const { data: plan } = await admin
-        .from('program_plans')
-        .select('price,currency')
-        .eq('program_id', program_id)
-        .eq('plan_type', 'individual')
-        .is('family_size', null)
+        .from('pricing_plans')
+        .select('price, currency')
+        .eq('entity_type', type)
+        .eq('entity_id', eid)
+        // .eq('subscription_type', 'monthly') // Default per migration, add if we support multiple
         .maybeSingle();
+
       if (plan) {
         const basePrice = Number((plan as any).price ?? 0);
         if (basePrice > 0) {
           payload.amount = basePrice;
           payload.currency = (plan as any).currency || 'NGN';
-        }
-      }
-    } else if (type === 'skill' && skill_id) {
-      const { data: plan } = await admin
-        .from('skill_plans')
-        .select('price,currency')
-        .eq('skill_id', skill_id)
-        .maybeSingle();
-      if (plan) {
-        const basePrice = Number((plan as any).price ?? 0);
-        if (basePrice > 0) {
-           payload.amount = basePrice;
-           payload.currency = (plan as any).currency || 'NGN';
         }
       }
     }

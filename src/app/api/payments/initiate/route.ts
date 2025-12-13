@@ -64,39 +64,38 @@ export async function POST(req: NextRequest) {
       id = inserted!.id as number;
     }
 
-    // Authoritative price source for program payments: program_plans (individual, family_size null)
-    if (kind === 'program' && program_id) {
-      const { data: plan } = await admin
-        .from('program_plans')
-        .select('price,currency')
-        .eq('program_id', program_id)
-        .eq('plan_type', 'individual')
-        .is('family_size', null)
+    // Authoritative price source: pricing_plans
+    if ((kind === 'program' && program_id) || (kind === 'skill' && (body.skill_id || body.meta?.skill_id))) {
+       const eid = kind === 'program' ? program_id : Number(body.skill_id || body.meta?.skill_id);
+       
+       const { data: plan } = await admin
+        .from('pricing_plans')
+        .select('price, currency')
+        .eq('entity_type', kind)
+        .eq('entity_id', eid)
         .maybeSingle();
 
-      if (plan) {
+       if (plan) {
         amount = Number((plan as any).price || 0);
         currency = (plan as any).currency || 'NGN';
         // Persist authoritative amount in success_enroll
         await admin.from('success_enroll').update({ amount, currency }).eq('id', id);
-      } else {
-        // Fallback to cached amount on success_enroll if available
-        const { data: seRow } = await admin
+       } else {
+         // Fallback code (as existed)
+         const { data: seRow } = await admin
           .from('success_enroll')
           .select('amount,currency')
           .eq('id', id)
           .maybeSingle();
-        const cachedAmount = (seRow as any)?.amount as number | null | undefined;
-        if (cachedAmount && Number(cachedAmount) > 0) {
-          amount = Number(cachedAmount);
-          currency = ((seRow as any)?.currency as string | null) || currency || 'NGN';
-        } else {
-          // No pricing information configured for this program payment
-          // eslint-disable-next-line no-console
-          console.error('Program payment missing pricing configuration', { program_id, success_enroll_id: id });
-          return NextResponse.json({ ok: false, error: 'pricing_not_configured' }, { status: 400 });
-        }
-      }
+         const cachedAmount = (seRow as any)?.amount as number | null | undefined;
+         if (cachedAmount && Number(cachedAmount) > 0) {
+            amount = Number(cachedAmount);
+            currency = ((seRow as any)?.currency as string | null) || currency || 'NGN';
+         } else {
+            console.error('Payment missing unified pricing configuration', { kind, eid, success_enroll_id: id });
+            return NextResponse.json({ ok: false, error: 'pricing_not_configured' }, { status: 400 });
+         }
+       }
     }
 
     const tx_ref = `se-${id}-${Date.now()}`;

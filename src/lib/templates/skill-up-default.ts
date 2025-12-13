@@ -28,21 +28,14 @@ export const defaultSkillUpForm = {
       type: "select",
       label: "Gender",
       required: true,
-      options: [
-        { label: "Male", value: "Male" },
-        { label: "Female", value: "Female" }
-      ]
+      options: ["Male", "Female"]
     },
     {
       id: "experienceLevel",
       type: "select",
       label: "Experience Level",
       required: true,
-      options: [
-        { label: "Beginner", value: "Beginner" },
-        { label: "Intermediate", value: "Intermediate" },
-        { label: "Advanced", value: "Advanced" }
-      ]
+      options: ["Beginner", "Intermediate", "Advanced"]
     },
     {
       id: "expectations",

@@ -18,17 +18,19 @@ async function ProgramsPage(): Promise<React.JSX.Element> {
     
     if (error) throw error;
     
-    // Fetch plans to determine starting price
-    const { data: plans } = await supabase.from('skill_plans').select('skill_id, price, currency');
+    // Unified Pricing Check (pricing_plans)
+    const { data: plans } = await supabase
+      .from('pricing_plans')
+      .select('entity_id, price, currency')
+      .eq('entity_type', 'skill');
+      
     const plansMap: Record<number, number> = {};
     const currencyMap: Record<number, string> = {};
 
     if (plans) {
       plans.forEach((p: any) => {
-        if (!plansMap[p.skill_id] || p.price < plansMap[p.skill_id]) {
-          plansMap[p.skill_id] = p.price;
-          currencyMap[p.skill_id] = p.currency;
-        }
+        plansMap[p.entity_id] = p.price;
+        currencyMap[p.entity_id] = p.currency;
       });
     }
 

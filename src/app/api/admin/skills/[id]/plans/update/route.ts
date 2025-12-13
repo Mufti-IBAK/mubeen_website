@@ -1,129 +1,99 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
+import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-function env(name: string, fb?: string) {
-  const v = process.env[name] ?? fb;
-  if (!v) throw new Error(`Missing env var: ${name}`);
-  return v as string;
-}
-
-async function readToken(req: NextRequest) {
+function getBearer(req: NextRequest) {
   const h =
     req.headers.get("authorization") || req.headers.get("Authorization");
-  if (h && /^Bearer\s+/i.test(h)) return h.replace(/^Bearer\s+/i, "");
-  const c = await cookies();
-  return c.get("sb-access-token")?.value || c.get("sb:token")?.value || null;
+  if (!h) return null;
+  const p = h.split(" ");
+  return p.length === 2 && /^bearer$/i.test(p[0]) ? p[1] : null;
 }
 
-async function ensureAdmin(req: NextRequest) {
-  const token = await readToken(req);
-  if (!token) return false;
-  const url = env("NEXT_PUBLIC_SUPABASE_URL");
-  const anon = env(
-    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
-    process.env.SUPABASE_ANON_KEY
-  );
-  const ures = await fetch(`${url}/auth/v1/user`, {
-    headers: { apikey: anon, Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-  if (!ures.ok) return false;
-  const user = await ures.json();
-  const service =
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
-  const pres = await fetch(
-    `${url}/rest/v1/profiles?id=eq.${user.id}&select=role`,
-    {
-      headers: {
-        apikey: service as string,
-        Authorization: `Bearer ${service}`,
-      },
-      cache: "no-store",
-    }
-  );
-  if (!pres.ok) return false;
-  const prof = await pres.json();
-  return prof?.[0]?.role === "admin" || prof?.[0]?.role === "super_admin";
-}
-
-export async function PUT(
+export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!(await ensureAdmin(req)))
-      return NextResponse.json({ error: "forbidden" }, { status: 403 });
     const { id } = await params;
-    const skill_id = Number(id);
-    if (!skill_id || Number.isNaN(skill_id))
-      return NextResponse.json({ error: "invalid_id" }, { status: 400 });
+    const skillId = Number(id);
+    if (!skillId || isNaN(skillId)) {
+      return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
+    }
 
     const body = await req.json().catch(() => ({}));
-    const price = Number(body?.price || 0);
-    const currency = String(body?.currency || "NGN");
-    const subscription_type = String(body?.subscription_type || "monthly");
 
-    const url = env("NEXT_PUBLIC_SUPABASE_URL");
-    const service =
-      process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY;
+    // Auth check
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+    const service = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-    // Upsert individual plan (family_size null)
-    const existingRes = await fetch(
-      `${url}/rest/v1/skill_plans?skill_id=eq.${skill_id}&plan_type=eq.individual&family_size=is.null&select=id`,
-      {
-        headers: {
-          apikey: service as string,
-          Authorization: `Bearer ${service}`,
-        },
-        cache: "no-store",
-      }
-    );
-    const existing = existingRes.ok ? await existingRes.json() : [];
-    if (existing?.[0]?.id) {
-      const up = await fetch(
-        `${url}/rest/v1/skill_plans?id=eq.${existing[0].id}`,
-        {
-          method: "PATCH",
-          headers: {
-            apikey: service as string,
-            Authorization: `Bearer ${service}`,
-            "content-type": "application/json",
-          },
-          body: JSON.stringify({
-            price,
-            currency,
-            subscription_type,
-          }),
-        }
-      );
-      if (!up.ok)
-        return NextResponse.json({ error: "update_failed" }, { status: 500 });
+    const bearer = getBearer(req);
+    const cookieStore = await cookies();
+    const s = createServerClient(url, anon, {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: () => undefined as any,
+      },
+    });
+
+    let user: any = null;
+    if (bearer) {
+      const tmp = createClient(url, anon);
+      const u = await tmp.auth.getUser(bearer);
+      user = u.data.user;
     } else {
-      const ins = await fetch(`${url}/rest/v1/skill_plans`, {
-        method: "POST",
-        headers: {
-          apikey: service as string,
-          Authorization: `Bearer ${service}`,
-          "content-type": "application/json",
-        },
-        body: JSON.stringify({
-          skill_id,
-          plan_type: "individual",
-          family_size: null,
-          price,
-          currency,
-          subscription_type,
-        }),
+      const u = await s.auth.getUser();
+      user = u.data.user;
+    }
+
+    if (!user)
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const admin = createClient(url, service);
+    // Verify admin
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (prof?.role !== "admin" && prof?.role !== "super_admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    // Upsert plan
+    // Check if exists
+    const { data: existing } = await admin
+      .from("skill_plans")
+      .select("id")
+      .eq("skill_id", skillId)
+      .maybeSingle();
+
+    if (existing) {
+      const { error } = await admin
+        .from("skill_plans")
+        .update({
+          price: body.price,
+          currency: body.currency,
+        })
+        .eq("id", existing.id);
+      if (error) throw error;
+    } else {
+      const { error } = await admin.from("skill_plans").insert({
+        skill_id: skillId,
+        price: body.price,
+        currency: body.currency,
       });
-      if (!ins.ok)
-        return NextResponse.json({ error: "insert_failed" }, { status: 500 });
+      if (error) throw error;
     }
 
     return NextResponse.json({ ok: true });
   } catch (e: any) {
-    console.error("Plan update error:", e);
+    console.error(e);
     return NextResponse.json(
-      { error: e?.message || "server_error" },
+      { error: e.message || "Server Error" },
       { status: 500 }
     );
   }

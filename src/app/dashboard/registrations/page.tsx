@@ -46,8 +46,9 @@ type Plan = { id: number; price: number; currency: string };
 export default function DashboardRegistrationsPage() {
   const router = useRouter();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
-  const [successPayments, setSuccessPayments] = useState<Array<{ id: number; program_id: number|null; program_title: string|null; amount: number|null; currency: string|null; created_at: string; type: string }>>([]);
+  const [successPayments, setSuccessPayments] = useState<Array<{ id: number; program_id: number|null; skill_id: number|null; program_title: string|null; amount: number|null; currency: string|null; created_at: string; type: string; status: string }>>([]);
   const [programs, setPrograms] = useState<Record<number, Program>>({});
+  const [skills, setSkills] = useState<Record<number, { id: number; title: string; slug?: string }>>({});
   const [plans, setPlans] = useState<Record<number, Plan>>({});
   const [classLinks, setClassLinks] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
@@ -85,14 +86,28 @@ export default function DashboardRegistrationsPage() {
       });
       setPlans(pl);
     }
+
     // Load success_enroll payments for this user
     const { data: seRows } = await supabase
       .from('success_enroll')
-      .select('id, program_id, program_title, amount, currency, created_at, type, user_email, status, category')
+      .select('id, program_id, skill_id, program_title, amount, currency, created_at, type, user_email, status, category')
       .or(`user_id.eq.${user.id},user_email.eq.${user.email ?? ''}`)
       .order('created_at', { ascending: false });
-    const paid = ((seRows as any[]) || []).filter(r => r?.status === 'paid');
-    setSuccessPayments(paid);
+    
+    // Include both 'paid' and 'pending' for visibility
+    const seList = ((seRows as any[]) || []).filter(r => r?.status === 'paid' || r?.status === 'pending');
+    setSuccessPayments(seList);
+    const paid = seList.filter(r => r.status === 'paid');
+
+    // Fetch skills if needed
+    const skillIds = new Set<number>();
+    seList.forEach(r => { if(r.skill_id) skillIds.add(r.skill_id); });
+    if(skillIds.size > 0) {
+      const { data: sk } = await supabase.from('skills').select('id, title, slug').in('id', Array.from(skillIds));
+      const sm: Record<number, { id: number; title: string; slug?: string }> = {};
+      (sk as any[] || []).forEach(s => { sm[s.id] = s; });
+      setSkills(sm);
+    }
 
     // Fetch classroom links for paid enrollments
     if (paid.length > 0) {
@@ -346,26 +361,47 @@ export default function DashboardRegistrationsPage() {
                   {successPayments.map((r) => (
                     <article key={r.id} className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm p-4 flex flex-col gap-3">
                       <div className="flex items-center justify-between">
-                        <h3 className="font-semibold">{r.program_title || (r.program_id ? `Program ${r.program_id}` : r.type)}</h3>
-                        <span className="badge bg-green-100 text-green-700 text-xs">Paid</span>
+                        <h3 className="font-semibold">
+                          {r.program_title || (r.program_id 
+                            ? `Program ${r.program_id}` 
+                            : (r.skill_id 
+                                ? (skills[r.skill_id]?.title || `Skill ${r.skill_id}`)
+                                : r.type))
+                          }
+                        </h3>
+                        <span className={`badge text-xs ${r.status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {r.status === 'paid' ? 'Paid' : 'Pending Payment'}
+                        </span>
                       </div>
                       <div className="text-sm">
                         {/* Category removed in unified model */}
                         <p><span className="text-[hsl(var(--muted-foreground))] mr-1">Amount:</span>{r.currency || 'NGN'} {Number(r.amount || 0).toLocaleString()}</p>
                         <p className="text-[hsl(var(--muted-foreground))]">{new Date(r.created_at).toLocaleString()}</p>
                       </div>
-                      {/* Join Classroom Button */}
-                      {classLinks[r.id] && (
-                        <a
-                          href={ensureAbsoluteUrl(classLinks[r.id])}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn-primary text-center mt-2"
-                          aria-label={`Join classroom for ${r.program_title || r.type}`}
-                        >
-                          Join Classroom
-                        </a>
-                      )}
+                      
+                      {/* Actions */}
+                      <div className="flex flex-wrap gap-2 mt-2">
+                         {r.status === 'pending' && (
+                           <a
+                              href={`/payment?${r.skill_id ? `skill=${r.skill_id}` : `program=${r.program_id}`}${r.id ? `&se=${r.id}` : ''}`}
+                              className="btn-primary flex-1 text-center"
+                           >
+                             Pay Now
+                           </a>
+                         )}
+                         {/* Join Classroom Button (only if paid) */}
+                         {r.status === 'paid' && classLinks[r.id] && (
+                          <a
+                            href={ensureAbsoluteUrl(classLinks[r.id])}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn-primary flex-1 text-center"
+                            aria-label={`Join classroom for ${r.program_title || r.type}`}
+                          >
+                            Join Classroom
+                          </a>
+                        )}
+                      </div>
                     </article>
                   ))}
                 </div>

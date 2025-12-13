@@ -19,17 +19,22 @@ async function ProgramsPage(): Promise<React.JSX.Element> {
     if (error) throw error;
     if (error) throw error;
     
-    // Fetch plans to determine starting price
-    const { data: plans } = await supabase.from('program_plans').select('program_id, price, currency');
+    // Unified Pricing Check (pricing_plans)
+    const { data: plans } = await supabase
+      .from('pricing_plans')
+      .select('entity_id, price, currency')
+      .eq('entity_type', 'program');
+      
     const plansMap: Record<number, number> = {};
     const currencyMap: Record<number, string> = {};
 
     if (plans) {
       plans.forEach((p: any) => {
-        if (!plansMap[p.program_id] || p.price < plansMap[p.program_id]) {
-          plansMap[p.program_id] = p.price;
-          currencyMap[p.program_id] = p.currency;
-        }
+        // Simplified logic: strict override or first found, 
+        // since we enforced unique constraint 
+        // but robustly handle potential dupes by taking latest or first
+        plansMap[p.entity_id] = p.price;
+        currencyMap[p.entity_id] = p.currency;
       });
     }
 

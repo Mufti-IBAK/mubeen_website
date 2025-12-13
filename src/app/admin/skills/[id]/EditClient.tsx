@@ -160,43 +160,9 @@ export default function AdminSkillsEditClient({ skillId }: { skillId: number }) 
     setMessage(res.ok && json?.ok ? 'Saved' : (json?.error || 'Failed to save'));
   };
 
-  const [plans, setPlans] = React.useState<Array<{ id?: number; plan_type: 'individual'; family_size: null; price: string; currency: string; subscription_type: string }>>([
-    { plan_type: 'individual', family_size: null, price: '', currency: 'NGN', subscription_type: 'monthly' },
-  ]);
-  const [plansMsg, setPlansMsg] = React.useState('');
 
-  React.useEffect(() => {
-    const loadPlans = async () => {
-      const { data } = await supabase.from('skill_plans').select('*').eq('skill_id', id).is('family_size', null).eq('plan_type','individual');
-      if (data && Array.isArray(data) && data[0]) {
-        const p = data[0] as any;
-        setPlans([{ id: p.id, plan_type: 'individual', family_size: null, price: String(p.price ?? ''), currency: p.currency ?? 'NGN', subscription_type: p.subscription_type ?? 'monthly' }]);
-      }
-    };
-    loadPlans();
-     
-  }, [id]);
 
-  const savePlans = async () => {
-    setPlansMsg('');
-    const indiv = plans[0];
-    if (!indiv || !indiv.price) { setPlansMsg('Nothing to save'); return; }
 
-    try {
-      const { data: sessionRes } = await supabase.auth.getSession();
-      const token = sessionRes.session?.access_token;
-      const res = await fetch(`/api/admin/skills/${id}/plans/update`, {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-        body: JSON.stringify({ price: Number(indiv.price), currency: indiv.currency, subscription_type: indiv.subscription_type })
-      });
-      const j = await res.json().catch(() => ({}));
-      if (!res.ok || !j?.ok) throw new Error(j?.error || 'Failed');
-      setPlansMsg('Plans saved');
-    } catch (e: any) {
-      setPlansMsg(e?.message || 'Failed to save plans');
-    }
-  };
 
   if (loading) return <p className="text-[hsl(var(--muted-foreground))]">Loading...</p>;
 
@@ -207,11 +173,11 @@ export default function AdminSkillsEditClient({ skillId }: { skillId: number }) 
         <div className="card-body flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">Next steps</h2>
-            <p className="text-sm text-[hsl(var(--muted-foreground))]">Configure pricing and build the registration forms for this program.</p>
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">Configure pricing and build the registration forms for this skill.</p>
           </div>
           <div className="flex gap-2">
-            <Link href={`/admin/skills/${id}/forms`} className="btn-outline">Build Forms</Link>
-            <a href="#pricing" className="btn-primary">Configure Pricing</a>
+            <Link href={`/admin/skill-up/${id}/forms`} className="btn-outline">Build Forms</Link>
+            <Link href="/admin/pricing" className="btn-primary">Manage Pricing</Link>
           </div>
         </div>
       </div>
@@ -370,46 +336,11 @@ export default function AdminSkillsEditClient({ skillId }: { skillId: number }) 
         </div>
       </div>
 
-      <section id="pricing" className="card">
+      <section className="card">
         <div className="card-body">
-          <h2 className="text-lg font-semibold mb-4">Pricing & Plans</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {plans.map((p, idx) => (
-              <div key={`${p.plan_type}-${p.family_size ?? 'solo'}`} className="border rounded p-4">
-                <p className="text-sm text-[hsl(var(--muted-foreground))] mb-2">{p.plan_type === 'individual' ? 'Individual' : `Family of ${p.family_size}`}</p>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs mb-1" htmlFor={`plan-${idx}-price`}>Price</label>
-                    <input id={`plan-${idx}-price`} value={p.price} onChange={(e) => {
-                      const next = [...plans]; next[idx] = { ...p, price: e.target.value }; setPlans(next);
-                    }} className="input" />
-                  </div>
-                  <div>
-                    <label className="block text-xs mb-1" htmlFor={`plan-${idx}-currency`}>Currency</label>
-                    <input id={`plan-${idx}-currency`} value={p.currency} onChange={(e) => {
-                      const next = [...plans]; next[idx] = { ...p, currency: e.target.value }; setPlans(next);
-                    }} className="input" />
-                  </div>
-                  <div>
-                    <label className="block text-xs mb-1" htmlFor={`plan-${idx}-sub`}>Type</label>
-                    <select id={`plan-${idx}-sub`} value={p.subscription_type} onChange={(e) => {
-                      const next = [...plans]; next[idx] = { ...p, subscription_type: e.target.value }; setPlans(next);
-                    }} className="input">
-                      <option value="monthly">Monthly</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="daily">Daily</option>
-                      <option value="one-time">One-time</option>
-                    </select>
-                  </div>
-
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4">
-            <button onClick={savePlans} className="btn-primary">Save Plans</button>
-            {plansMsg && <span className="ml-3 text-sm text-[hsl(var(--muted-foreground))]">{plansMsg}</span>}
-          </div>
+           <h2 className="text-lg font-semibold mb-2">Pricing</h2>
+           <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">Pricing is now managed globally.</p>
+           <Link href="/admin/pricing" className="btn-primary">Go to Global Pricing Manager</Link>
         </div>
       </section>
     </div>
