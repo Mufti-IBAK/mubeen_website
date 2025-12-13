@@ -16,6 +16,7 @@ import {
   FaChevronLeft,
   FaChevronRight,
   FaBell,
+  FaCreditCard,
 } from "react-icons/fa";
 
 export function AdminSidebarNew({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -26,10 +27,12 @@ export function AdminSidebarNew({ open, onClose }: { open: boolean; onClose: () 
     { href: "/admin", label: "Dashboard", icon: FaTachometerAlt },
     { href: "/admin/programs", label: "Programs", icon: FaBook },
     { href: "/admin/skills", label: "Skills", icon: FaBook },
+    { href: "/admin/pricing", label: "Pricing Plans", icon: FaCreditCard },
     { href: "/admin/registrations", label: "Registrations", icon: FaFileAlt },
     { href: "/admin/unpaid_enroll", label: "Unpaid Enrollments", icon: FaFileAlt },
     { href: "/admin/resources", label: "Resources", icon: FaFileAlt },
     { href: "/admin/user-management", label: "Users", icon: FaUsers },
+    { href: "/skill-up", label: "Skill Up (Public)", icon: FaGlobe },
   ];
 
   const isActive = (href: string) => pathname === href || (href !== "/admin" && pathname?.startsWith(href));

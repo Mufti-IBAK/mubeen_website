@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { FormBuilder, FormSchema } from "@/components/form-builder/FormBuilder";
 
+import { defaultProgramForm } from "@/lib/templates/program-default";
+
 export function ProgramFormsClient({ programId }: { programId: number }) {
   const [active] = useState<'individual'>("individual");
   const [schema, setSchema] = useState<FormSchema>({ title: "Registration Form", fields: [] });
@@ -22,7 +24,7 @@ export function ProgramFormsClient({ programId }: { programId: number }) {
       .eq("program_id", programId)
       .eq("form_type", 'individual')
       .maybeSingle();
-    let next = (data?.schema as FormSchema) || { title: "Registration Form", fields: [] };
+    let next = (data?.schema as FormSchema) || defaultProgramForm;
     if (progTitle) {
       const desired = `Register for ${progTitle}`;
       if (!next.title || next.title !== desired) next = { ...next, title: desired };
