@@ -24,6 +24,16 @@ export default function RegistrationFormClient({ skill }: { skill: Skill }) {
         return;
       }
       setAuthed(true);
+      
+      // Load plans
+      const { data: plansData } = await supabase
+        .from('pricing_plans')
+        .select('price, currency, subscription_type')
+        .eq('entity_type', 'skill')
+        .eq('entity_id', skill.id);
+      setPlans(plansData || []);
+      if (plansData?.length) setSelectedPlan(plansData[0]);
+
       // Load admin-built skill form schema
       const { data } = await supabase
         .from("skill_forms")
@@ -37,21 +47,15 @@ export default function RegistrationFormClient({ skill }: { skill: Skill }) {
     })();
   }, [skill.id, skill.slug]);
 
+  const [plans, setPlans] = useState<any[]>([]);
+  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+
   const saveForm = async (vals: Record<string, unknown>) => {
     try {
       setMessage("");
       const { data: s } = await supabase.auth.getSession();
       const token = s.session?.access_token;
-      // Note: 'program_id' in payload might need to be 'skill_id' if the API supports it,
-      // or we piggyback on program_id if the backend treats them similarly.
-      // Checking api/success-enroll/create would be good, but assuming we pass skill_id for now or adapting.
-      // If the backend expects 'program_id' only, we might need to adjust or use a different endpoint.
-      // Let's assume the success-enroll endpoint handles 'type' or we send 'skill_id'.
-      // Update: success_enroll usually has program_id. If skills are stored in programs table, it's fine.
-      // But we queried 'skills' table. success_enroll likely needs a 'type' column or 'skill_id' column.
-      // For now, I'll send program_id as null and skill_id if possible, or assume unification.
-      // Let's check the API endpoint code later. Sending skill_id is safer if backend supports it.
-
+      
       const res = await fetch("/api/success-enroll/create", {
         method: "POST",
         headers: {
@@ -63,6 +67,7 @@ export default function RegistrationFormClient({ skill }: { skill: Skill }) {
           skill_id: skill.id,
           type: "skill",
           form_data: vals,
+          subscription_type: selectedPlan?.subscription_type
         }),
       });
 
@@ -126,10 +131,36 @@ export default function RegistrationFormClient({ skill }: { skill: Skill }) {
               {skill.description}
             </p>
           )}
+
+          {plans.length > 0 && (
+            <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-100 my-4 space-y-2">
+              <h3 className="text-sm font-semibold text-blue-900">Choose Pricing Plan:</h3>
+              <div className="flex flex-wrap gap-3">
+                {plans.map((p, idx) => (
+                  <label key={idx} className={`flex-1 min-w-[140px] cursor-pointer rounded-md border p-3 transition-all ${
+                    selectedPlan?.subscription_type === p.subscription_type 
+                      ? 'border-brand-primary bg-white shadow-sm ring-1 ring-brand-primary' 
+                      : 'border-gray-200 bg-gray-50'
+                  }`}>
+                    <input 
+                      type="radio" 
+                      name="plan" 
+                      className="hidden" 
+                      checked={selectedPlan?.subscription_type === p.subscription_type}
+                      onChange={() => setSelectedPlan(p)}
+                    />
+                    <div className="text-xs font-bold uppercase text-[hsl(var(--muted-foreground))]">{p.subscription_type}</div>
+                    <div className="text-lg font-bold">{p.currency} {p.price.toLocaleString()}</div>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
           <FormRenderer
             schema={schema}
             onSubmit={saveForm}
-            submitLabel="Save Registration"
+            submitLabel="Save & Proceed"
           />
           {message && <p className="text-sm text-red-600">{message}</p>}
         </div>

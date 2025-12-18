@@ -115,7 +115,7 @@ export default function PaymentClient() {
                 if (seRow.program_id) {
                   const { data: plan } = await supabase
                     .from("pricing_plans")
-                    .select("price,currency")
+                    .select("price,currency,subscription_type")
                     .eq("entity_type", "program")
                     .eq("entity_id", seRow.program_id)
                     .maybeSingle();
@@ -126,7 +126,7 @@ export default function PaymentClient() {
                 } else if (seRow.skill_id) {
                   const { data: plan } = await supabase
                     .from("pricing_plans")
-                    .select("price,currency")
+                    .select("price,currency,subscription_type")
                     .eq("entity_type", "skill")
                     .eq("entity_id", seRow.skill_id)
                     .maybeSingle();
@@ -578,7 +578,11 @@ export default function PaymentClient() {
               {(form.kind === "program" || form.kind === "skill") &&
                 (selectedPlan || lockedSe) && (
                   <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
-                    Automatically set from registration.
+                    Automatically set from registration
+                    {selectedPlan?.subscription_type && selectedPlan.subscription_type !== 'one-time' && (
+                      <span> ({selectedPlan.subscription_type})</span>
+                    )}
+                    .
                   </p>
                 )}
             </div>

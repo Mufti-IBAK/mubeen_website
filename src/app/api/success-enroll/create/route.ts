@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
     const skill_id = body?.skill_id ? Number(body.skill_id) : null;
     const type = body?.type === 'skill' ? 'skill' : 'program';
     const form_data = (body?.form_data ?? {}) as Record<string, unknown>;
+    const requested_sub_type = body?.subscription_type ?? null;
 
     if ((!program_id && !skill_id) || (program_id && Number.isNaN(program_id)) || (skill_id && Number.isNaN(skill_id))) {
        return NextResponse.json({ error: 'Invalid program_id or skill_id' }, { status: 400 });
@@ -90,19 +91,24 @@ export async function POST(req: NextRequest) {
     if ((type === 'program' && program_id) || (type === 'skill' && skill_id)) {
       const eid = (type === 'program' ? program_id : skill_id) as number;
       
-      const { data: plan } = await admin
+      let q = admin
         .from('pricing_plans')
-        .select('price, currency')
+        .select('price, currency, subscription_type')
         .eq('entity_type', type)
-        .eq('entity_id', eid)
-        // .eq('subscription_type', 'monthly') // Default per migration, add if we support multiple
-        .maybeSingle();
+        .eq('entity_id', eid);
+      
+      if (requested_sub_type) {
+        q = q.eq('subscription_type', requested_sub_type);
+      }
+      
+      const { data: plan } = await q.maybeSingle();
 
       if (plan) {
         const basePrice = Number((plan as any).price ?? 0);
         if (basePrice > 0) {
           payload.amount = basePrice;
           payload.currency = (plan as any).currency || 'NGN';
+          payload.subscription_type = (plan as any).subscription_type || 'monthly';
         }
       }
     }

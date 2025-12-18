@@ -1,6 +1,6 @@
-import { supabase } from '@/lib/supabaseClient';
-import { ProgramCard, Program } from '@/components/ProgramCard';
-import React from 'react';
+import { supabase } from "@/lib/supabaseClient";
+import { ProgramCard, Program } from "@/components/ProgramCard";
+import React from "react";
 
 export const revalidate = 0;
 
@@ -9,51 +9,60 @@ async function ProgramsPage(): Promise<React.JSX.Element> {
   let fetchError = false;
   // Define helper type directly or import, but here we just extend Program
 
-
   try {
     const { data, error } = await supabase
-      .from('programs')
-      .select('*')
-      .order('is_flagship', { ascending: false });
-    
+      .from("programs")
+      .select("*")
+      .order("is_flagship", { ascending: false });
+
     if (error) throw error;
     if (error) throw error;
-    
+
     // Unified Pricing Check (pricing_plans)
     const { data: plans } = await supabase
-      .from('pricing_plans')
-      .select('entity_id, price, currency')
-      .eq('entity_type', 'program');
-      
+      .from("pricing_plans")
+      .select("entity_id, price, currency, subscription_type")
+      .eq("entity_type", "program");
+
     const plansMap: Record<number, number> = {};
     const currencyMap: Record<number, string> = {};
+    const subMap: Record<number, string> = {};
 
     if (plans) {
       plans.forEach((p: any) => {
-        // Simplified logic: strict override or first found, 
-        // since we enforced unique constraint 
+        // Simplified logic: strict override or first found,
+        // since we enforced unique constraint
         // but robustly handle potential dupes by taking latest or first
         plansMap[p.entity_id] = p.price;
         currencyMap[p.entity_id] = p.currency;
+        subMap[p.entity_id] = p.subscription_type;
       });
     }
 
-    programs = ((data || []) as Program[]).map(p => ({
-      ...p,
-      price_start: plansMap[p.id] ? `${currencyMap[p.id]} ${plansMap[p.id].toLocaleString()}` : undefined
-    }));
+    programs = ((data || []) as Program[]).map(p => {
+       const period = subMap[p.id] === 'one-time' ? '' : `/${subMap[p.id] === 'monthly' ? 'mo' : (subMap[p.id] === 'yearly' ? 'yr' : 'wk')}`;
+       return {
+         ...p,
+         price_start: plansMap[p.id] ? `${currencyMap[p.id]} ${plansMap[p.id].toLocaleString()}${period}` : undefined
+       };
+    });
   } catch (error: any) {
     fetchError = true;
     // Log error server-side but don't crash
-    console.warn('Programs fetch failed:', error?.message);
+    console.warn("Programs fetch failed:", error?.message);
   }
 
   if (fetchError) {
     return (
       <div className="bg-brand-bg">
         <div className="container px-6 py-20 mx-auto text-center">
-          <h1 className="text-4xl font-bold text-brand-dark">Something Went Wrong</h1>
-          <p className="mt-4 text-lg text-brand-dark/70">We couldn&apos;t load the programs at this time. Please try again later.</p>
+          <h1 className="text-4xl font-bold text-brand-dark">
+            Something Went Wrong
+          </h1>
+          <p className="mt-4 text-lg text-brand-dark/70">
+            We couldn&apos;t load the programs at this time. Please try again
+            later.
+          </p>
         </div>
       </div>
     );

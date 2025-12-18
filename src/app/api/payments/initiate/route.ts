@@ -16,7 +16,14 @@ export async function POST(req: NextRequest) {
     else { const form = await req.formData(); form.forEach((v, k) => (body[k] = String(v))); }
 
     const full_name = required('full_name', body.full_name ?? null);
-    const email = required('email', body.email ?? null);
+    let email = required('email', body.email ?? null);
+    
+    // Robust Email Validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      console.warn('Invalid email provided for payment, attempting fallback to session user email', { email });
+    }
+    
     const kind = required('kind', body.kind ?? null) as 'program'|'donation'|'other'|'skill';
     let amount = Number(required('amount', body.amount ?? null));
     let currency = (body.currency as string) || 'NGN';
@@ -41,7 +48,17 @@ export async function POST(req: NextRequest) {
         const s = createServerClient(url, anon, { cookies: { getAll: () => cookieStore.getAll(), setAll: () => undefined as any } });
         const u = await s.auth.getUser();
         user_id = (u.data.user as any)?.id ?? null;
+        
+        // Final fallback for email if invalid
+        if (!emailRegex.test(email) && u.data.user?.email) {
+          email = u.data.user.email;
+        }
       } catch {}
+    }
+    
+    // Final hard stop if email is still invalid
+    if (!emailRegex.test(email)) {
+      throw new Error('A valid email address is required for payment.');
     }
 
     // If client passes an existing success_enroll row, update it; else create one

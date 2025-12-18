@@ -4,6 +4,28 @@ import Image from "next/image";
 import Link from "next/link";
 import React from "react";
 
+async function PriceInfo({ entityId }: { entityId: number }) {
+  const { data: plan } = await supabase
+    .from("pricing_plans")
+    .select("price, currency, subscription_type")
+    .eq("entity_type", "skill")
+    .eq("entity_id", entityId)
+    .maybeSingle();
+
+  if (!plan) return null;
+
+  const period = plan.subscription_type === 'one-time' ? '' : `/${plan.subscription_type === 'monthly' ? 'mo' : (plan.subscription_type === 'yearly' ? 'yr' : 'wk')}`;
+
+  return (
+    <div>
+      <p className="text-sm text-brand-dark/60">Price</p>
+      <p className="font-bold text-xl text-brand-primary">
+        {plan.currency} {Number(plan.price).toLocaleString()}{period}
+      </p>
+    </div>
+  );
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function ProgramDetailPage({
@@ -159,6 +181,8 @@ export default async function ProgramDetailPage({
                       </p>
                     </div>
                   )}
+                  {/* Price Section */}
+                  <PriceInfo entityId={program.id} />
                 </div>
                 {/* Registration button with deadline guard */}
                 {isClosed ? (

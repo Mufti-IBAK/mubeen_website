@@ -10,6 +10,7 @@ type PricingItem = {
   price_id?: number;
   price: string; // string for input
   currency: string;
+  subscription_type: string;
 };
 
 export function PricingClient() {
@@ -48,6 +49,7 @@ export function PricingClient() {
         price_id: pr?.id,
         price: pr ? String(pr.price) : "",
         currency: pr?.currency || "NGN",
+        subscription_type: pr?.subscription_type || "monthly",
       });
     });
     (skills || []).forEach((s: any) => {
@@ -59,6 +61,7 @@ export function PricingClient() {
         price_id: pr?.id,
         price: pr ? String(pr.price) : "",
         currency: pr?.currency || "NGN",
+        subscription_type: pr?.subscription_type || "monthly",
       });
     });
 
@@ -90,7 +93,7 @@ export function PricingClient() {
         entity_id: item.entity_id,
         price: Number(item.price),
         currency: item.currency,
-        subscription_type: "monthly", // Default for now
+        subscription_type: item.subscription_type || "monthly",
       };
 
       const res = await fetch("/api/admin/pricing/update", {
@@ -128,6 +131,12 @@ export function PricingClient() {
     setItems(next);
   };
 
+  const handleSubscriptionChange = (index: number, val: string) => {
+    const next = [...items];
+    next[index].subscription_type = val;
+    setItems(next);
+  };
+
   if (loading) return <div>Loading Global Pricing...</div>;
 
   return (
@@ -145,6 +154,7 @@ export function PricingClient() {
               <th className="p-2">Title</th>
               <th className="p-2">Price</th>
               <th className="p-2">Currency</th>
+              <th className="p-2">Period</th>
               <th className="p-2">Action</th>
             </tr>
           </thead>
@@ -188,6 +198,18 @@ export function PricingClient() {
                   </select>
                 </td>
                 <td className="p-2">
+                  <select
+                    className="input w-32"
+                    value={item.subscription_type}
+                    onChange={(e) => handleSubscriptionChange(idx, e.target.value)}
+                  >
+                    <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="one-time">One-time</option>
+                  </select>
+                </td>
+                <td className="p-2">
                   <button
                     onClick={() => savePrice(item)}
                     disabled={updatingId === item.entity_id}
@@ -200,7 +222,7 @@ export function PricingClient() {
             ))}
             {items.length === 0 && (
               <tr>
-                <td colSpan={5} className="p-4 text-center">
+                <td colSpan={6} className="p-4 text-center">
                   No programs or skills found.
                 </td>
               </tr>

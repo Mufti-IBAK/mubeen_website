@@ -28,6 +28,7 @@ export function AdminSidebarNew({ open, onClose }: { open: boolean; onClose: () 
     { href: "/admin/programs", label: "Programs", icon: FaBook },
     { href: "/admin/skills", label: "Skills", icon: FaBook },
     { href: "/admin/pricing", label: "Pricing Plans", icon: FaCreditCard },
+    { href: "/admin/forms", label: "Form Builder", icon: FaFileAlt },
     { href: "/admin/registrations", label: "Registrations", icon: FaFileAlt },
     { href: "/admin/unpaid_enroll", label: "Unpaid Enrollments", icon: FaFileAlt },
     { href: "/admin/resources", label: "Resources", icon: FaFileAlt },

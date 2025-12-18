@@ -90,7 +90,7 @@ export default function DashboardRegistrationsPage() {
     // Load success_enroll payments for this user
     const { data: seRows } = await supabase
       .from('success_enroll')
-      .select('id, program_id, skill_id, program_title, amount, currency, created_at, type, user_email, status, category')
+      .select('id, program_id, skill_id, program_title, amount, currency, created_at, type, user_email, status, category, subscription_type')
       .or(`user_id.eq.${user.id},user_email.eq.${user.email ?? ''}`)
       .order('created_at', { ascending: false });
     
@@ -375,7 +375,15 @@ export default function DashboardRegistrationsPage() {
                       </div>
                       <div className="text-sm">
                         {/* Category removed in unified model */}
-                        <p><span className="text-[hsl(var(--muted-foreground))] mr-1">Amount:</span>{r.currency || 'NGN'} {Number(r.amount || 0).toLocaleString()}</p>
+                        <p>
+                          <span className="text-[hsl(var(--muted-foreground))] mr-1">Amount:</span>
+                          {r.currency || 'NGN'} {Number(r.amount || 0).toLocaleString()}
+                          {r.subscription_type && r.subscription_type !== 'one-time' && (
+                            <span className="text-[hsl(var(--muted-foreground))] ml-1">
+                              / {r.subscription_type === 'monthly' ? 'mo' : (r.subscription_type === 'yearly' ? 'yr' : (r.subscription_type === 'weekly' ? 'wk' : r.subscription_type))}
+                            </span>
+                          )}
+                        </p>
                         <p className="text-[hsl(var(--muted-foreground))]">{new Date(r.created_at).toLocaleString()}</p>
                       </div>
                       
