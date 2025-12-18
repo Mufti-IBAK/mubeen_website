@@ -26,8 +26,8 @@ export default function GlobalFormsPage() {
         .select("id, title");
 
       const combined: Entity[] = [
-        ...(progs || []).map((p) => ({ ...p, type: "program" as const })),
-        ...(skills || []).map((s) => ({ ...s, type: "skill" as const })),
+        ...(progs || []).map((p: any) => ({ ...p, type: "program" as const })),
+        ...(skills || []).map((s: any) => ({ ...s, type: "skill" as const })),
       ];
       setEntities(combined);
     };
@@ -111,11 +111,13 @@ export default function GlobalFormsPage() {
             <div className="p-4 border-b border-[hsl(var(--border))] font-semibold bg-gray-50 dark:bg-gray-800/50">
               Select Program / Skill
             </div>
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              {entities.map((e) => (
+            <div className="flex-1 overflow-y-auto p-2 space-y-1" role="listbox" aria-label="Available Programs and Skills">
+              {entities.map((e: any) => (
                 <button
                   key={`${e.type}-${e.id}`}
                   onClick={() => loadForm(e)}
+                  role="option"
+                  aria-selected={selected?.id === e.id && selected?.type === e.type}
                   className={`w-full text-left px-4 py-2 rounded-md text-sm transition-colors ${
                     selected?.id === e.id && selected?.type === e.type
                       ? "bg-[hsl(var(--primary))] text-white"
@@ -151,7 +153,11 @@ export default function GlobalFormsPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     {message && (
-                      <span className="text-sm font-medium text-brand-primary animate-in fade-in slide-in-from-right-1">
+                      <span
+                        className="text-sm font-medium text-brand-primary animate-in fade-in slide-in-from-right-1"
+                        role="status"
+                        aria-live="polite"
+                      >
                         {message}
                       </span>
                     )}
@@ -159,6 +165,7 @@ export default function GlobalFormsPage() {
                       onClick={handleSave}
                       disabled={saving || loading}
                       className="btn-primary"
+                      aria-label={saving ? "Saving form..." : "Save Form"}
                     >
                       {saving ? "Saving..." : "Save Form"}
                     </button>

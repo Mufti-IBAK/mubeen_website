@@ -4,21 +4,10 @@ import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { FaBook, FaFileAlt, FaUsers } from "react-icons/fa";
 
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
-} from "recharts";
 
 export default function AdminHomePage() {
   const [users, setUsers] = useState<number | null>(null);
   const [programs, setPrograms] = useState<number | null>(null);
-  const [stats, setStats] = useState<any[]>([]);
-  const [activityData, setActivityData] = useState<any[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -29,43 +18,8 @@ export default function AdminHomePage() {
         .from("programs")
         .select("id", { count: "exact", head: true });
 
-      // Fetch stats from view
-      const { data: analytics } = await supabase
-        .from("analytics_program_registrations")
-        .select("*")
-        .limit(5);
-
-      // Fetch activity data (registrations by month)
-      const { data: activity } = await supabase.rpc(
-        "get_monthly_registrations"
-      ); // Assuming RPC or we process client side if small
-      // Fallback client-side aggregation if RPC missing (safer for now)
-      const { data: regs } = await supabase
-        .from("enrollments")
-        .select("created_at")
-        .order("created_at", { ascending: true });
-
-      const chartData: any[] = [];
-      if (regs) {
-        const map = new Map<string, number>();
-        regs.forEach((r: any) => {
-          const month = new Date(r.created_at).toLocaleString("default", {
-            month: "short",
-          });
-          map.set(month, (map.get(month) || 0) + 1);
-        });
-        // Last 6 months order? simple map iteration for now
-        map.forEach((count, month) =>
-          chartData.push({ name: month, users: count })
-        );
-      }
-
       setUsers(usersCount || 0);
       setPrograms(progCount || 0);
-      setStats(analytics || []);
-      setActivityData(
-        chartData.length ? chartData : [{ name: "No Data", users: 0 }]
-      );
     };
     load();
   }, []);

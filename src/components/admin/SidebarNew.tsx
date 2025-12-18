@@ -155,18 +155,17 @@ export function AdminSidebarNew({ open, onClose }: { open: boolean; onClose: () 
               <Link
                 key={n.href}
                 href={n.href}
-                className={`relative flex items-center py-3 ${collapsed ? 'px-3 justify-center' : 'px-6'} rounded-md transition-colors ${
-                  active ? "bg-[hsl(var(--muted))] text-[hsl(var(--foreground))]" : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))]"
-                }`}
+                className={`flex items-center gap-3 px-4 py-2 rounded-lg text-sm transition-all ${
+                  active
+                    ? "bg-[hsl(var(--muted))] text-[hsl(var(--foreground))] font-medium"
+                    : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+                } ${collapsed ? 'justify-center' : ''}`}
+                aria-current={active ? "page" : undefined}
                 onClick={onClose}
                 title={n.label}
               >
-                {/* Active pill indicator */}
-                {active && !collapsed && (
-                  <span className="absolute left-1 top-1/2 -translate-y-1/2 h-5/6 w-1 rounded-full bg-[hsl(var(--primary))]" />
-                )}
-                <n.icon size={18} className="flex-shrink-0" aria-hidden="true" />
-                {!collapsed && <span className="ml-3 whitespace-nowrap">{n.label}</span>}
+                <n.icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
+                {!collapsed && <span className="whitespace-nowrap">{n.label}</span>}
               </Link>
             );
           })}
