@@ -1,38 +1,38 @@
-23:15:08.854 Running build in Washington, D.C., USA (East) – iad1
-23:15:08.855 Build machine configuration: 2 cores, 8 GB
-23:15:09.031 Cloning github.com/Mufti-IBAK/mubeen_website (Branch: master, Commit: 0346892)
-23:15:09.606 Cloning completed: 574.000ms
-23:15:10.792 Restored build cache from previous deployment (FLGq9vmyjH4XZWjmZHjoGUY9uPBF)
-23:15:12.880 Running "vercel build"
-23:15:13.417 Vercel CLI 50.0.1
-23:15:13.919 Installing dependencies...
-23:15:16.480 
-23:15:16.481 up to date in 2s
-23:15:16.481 
-23:15:16.481 163 packages are looking for funding
-23:15:16.482   run `npm fund` for details
-23:15:16.519 Detected Next.js version: 16.0.10
-23:15:16.524 Running "npm run build"
-23:15:16.667 
-23:15:16.668 > mubeen_website@0.1.0 build
-23:15:16.668 > next build
-23:15:16.668 
-23:15:17.639    ▲ Next.js 16.0.10 (Turbopack)
-23:15:17.640 
-23:15:17.743    Creating an optimized production build ...
-23:15:43.620  ✓ Compiled successfully in 25.4s
-23:15:43.628    Running TypeScript ...
-23:15:58.525 Failed to compile.
-23:15:58.526 
-23:15:58.526 ./src/app/admin/skills/[id]/forms/page.tsx:3:10
-23:15:58.526 Type error: Module '"./FormClient"' has no exported member 'ProgramFormsClient'.
-23:15:58.527 
-23:15:58.527 [0m [90m 1 |[39m [36mimport[39m [33mReact[39m [36mfrom[39m [32m"react"[39m[33m;[39m
-23:15:58.527  [90m 2 |[39m [36mimport[39m [33mLink[39m [36mfrom[39m [32m"next/link"[39m[33m;[39m
-23:15:58.527 [31m[1m>[22m[39m[90m 3 |[39m [36mimport[39m { [33mProgramFormsClient[39m } [36mfrom[39m [32m"./FormClient"[39m[33m;[39m
-23:15:58.528  [90m   |[39m          [31m[1m^[22m[39m
-23:15:58.528  [90m 4 |[39m
-23:15:58.528  [90m 5 |[39m [36mexport[39m [36mdefault[39m [36masync[39m [36mfunction[39m [33mProgramFormsPage[39m({ params }[33m:[39m { params[33m:[39m [33mPromise[39m[33m<[39m{ id[33m:[39m string }[33m>[39m }) {
-23:15:58.528  [90m 6 |[39m   [36mconst[39m { id } [33m=[39m [36mawait[39m params[33m;[39m[0m
-23:15:58.594 Next.js build worker exited with code: 1 and signal: null
-23:15:58.648 Error: Command "npm run build" exited with 1
+23:26:47.705 Running build in Washington, D.C., USA (East) – iad1
+23:26:47.706 Build machine configuration: 2 cores, 8 GB
+23:26:47.944 Cloning github.com/Mufti-IBAK/mubeen_website (Branch: master, Commit: 07d4b8e)
+23:26:49.253 Cloning completed: 1.309s
+23:26:50.296 Restored build cache from previous deployment (FLGq9vmyjH4XZWjmZHjoGUY9uPBF)
+23:26:51.092 Running "vercel build"
+23:26:51.539 Vercel CLI 50.0.1
+23:26:51.904 Installing dependencies...
+23:26:53.532 
+23:26:53.533 up to date in 1s
+23:26:53.533 
+23:26:53.534 163 packages are looking for funding
+23:26:53.534   run `npm fund` for details
+23:26:53.563 Detected Next.js version: 16.0.10
+23:26:53.567 Running "npm run build"
+23:26:53.681 
+23:26:53.682 > mubeen_website@0.1.0 build
+23:26:53.682 > next build
+23:26:53.682 
+23:26:54.452    ▲ Next.js 16.0.10 (Turbopack)
+23:26:54.453 
+23:26:54.541    Creating an optimized production build ...
+23:27:15.601  ✓ Compiled successfully in 20.7s
+23:27:15.620    Running TypeScript ...
+23:27:27.102 Failed to compile.
+23:27:27.103 
+23:27:27.103 ./src/app/dashboard/registrations/page.tsx:381:30
+23:27:27.103 Type error: Property 'subscription_type' does not exist on type '{ id: number; program_id: number | null; skill_id: number | null; program_title: string | null; amount: number | null; currency: string | null; created_at: string; type: string; status: string; }'.
+23:27:27.103 
+23:27:27.104 [0m [90m 379 |[39m                           [33m<[39m[33mspan[39m className[33m=[39m[32m"text-[hsl(var(--muted-foreground))] mr-1"[39m[33m>[39m[33mAmount[39m[33m:[39m[33m<[39m[33m/[39m[33mspan[39m[33m>[39m
+23:27:27.104  [90m 380 |[39m                           {r[33m.[39mcurrency [33m||[39m [32m'NGN'[39m} {[33mNumber[39m(r[33m.[39mamount [33m||[39m [35m0[39m)[33m.[39mtoLocaleString()}
+23:27:27.104 [31m[1m>[22m[39m[90m 381 |[39m                           {r[33m.[39msubscription_type [33m&&[39m r[33m.[39msubscription_type [33m!==[39m [32m'one-time'[39m [33m&&[39m (
+23:27:27.104  [90m     |[39m                              [31m[1m^[22m[39m
+23:27:27.105  [90m 382 |[39m                             [33m<[39m[33mspan[39m className[33m=[39m[32m"text-[hsl(var(--muted-foreground))] ml-1"[39m[33m>[39m
+23:27:27.105  [90m 383 |[39m                               [33m/[39m {r[33m.[39msubscription_type [33m===[39m [32m'monthly'[39m [33m?[39m [32m'mo'[39m [33m:[39m (r[33m.[39msubscription_type [33m===[39m [32m'yearly'[39m [33m?[39m [32m'yr'[39m [33m:[39m (r[33m.[39msubscription_type [33m===[39m [32m'weekly'[39m [33m?[39m [32m'wk'[39m [33m:[39m r[33m.[39msubscription_type))}
+23:27:27.105  [90m 384 |[39m                             [33m<[39m[33m/[39m[33mspan[39m[33m>[39m[0m
+23:27:27.142 Next.js build worker exited with code: 1 and signal: null
+23:27:27.184 Error: Command "npm run build" exited with 1

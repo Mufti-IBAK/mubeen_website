@@ -59,20 +59,15 @@ export const DynamicRegistrationFlow: React.FC<{ programSlug?: string }> = ({ pr
       setLoading(true);
       const { data: userRes } = await supabase.auth.getUser();
       const user = userRes.user;
-      console.log('User authenticated:', !!user);
       const { data: prog, error: progError } = await supabase.from("programs").select("id, title, slug").eq("slug", programSlug || "").single();
       if (!prog) { 
-        console.error('Program not found for slug:', programSlug, progError);
         setProgram(null); 
         setLoading(false); 
         return; 
       }
-      console.log('✅ Program found:', prog.title, 'ID:', prog.id);
       setProgram(prog);
       // Load plans
       const { data: planRows, error: plansError } = await supabase.from('program_plans').select('*').eq('program_id', prog.id);
-      if (plansError) console.error('Error loading plans:', plansError);
-      console.log('💰 Plans loaded:', planRows?.length || 0);
       setPlans((planRows as any[] || []).map((r) => ({ id: r.id, plan_type: r.plan_type, family_size: r.family_size, price: Number(r.price), currency: r.currency, duration_months: r.duration_months })));
       
       // Confirm forms exist; if none, show message and disable flow
@@ -80,14 +75,10 @@ export const DynamicRegistrationFlow: React.FC<{ programSlug?: string }> = ({ pr
         .from('program_forms')
         .select('id', { count: 'exact' })
         .eq('program_id', prog.id);
-      if (formsError) console.error('Error checking forms:', formsError);
-      console.log('📋 Forms count:', formsCount);
       
       if (!formsCount || formsCount === 0) {
-        console.warn('⚠️ No forms found - setting error message');
         setMessage('Registration form is not yet configured for this program. Please check back later.');
       } else {
-        console.log('✅ Forms exist - clearing error messages');
         // Clear any previous error messages if forms exist
         setMessage('');
       }
@@ -124,19 +115,13 @@ export const DynamicRegistrationFlow: React.FC<{ programSlug?: string }> = ({ pr
   useEffect(() => {
     const loadForms = async () => {
       if (!program) return;
-      console.log(`Loading forms for program ${program.id}, type: ${type}`);
       if (type === 'individual') {
         const { data: formRow, error } = await supabase.from('program_forms').select('schema').eq('program_id', program.id).eq('form_type', 'individual').single();
-        if (error) console.error('Error loading individual form:', error);
-        console.log('Individual form loaded:', !!formRow?.schema);
         setSchema((formRow?.schema as FormSchema) || null);
         setMemberSchema(null);
       } else {
         const { data: head, error: headError } = await supabase.from('program_forms').select('schema').eq('program_id', program.id).eq('form_type', 'family_head').single();
         const { data: mem, error: memError } = await supabase.from('program_forms').select('schema').eq('program_id', program.id).eq('form_type', 'family_member').single();
-        if (headError) console.error('Error loading family head form:', headError);
-        if (memError) console.error('Error loading family member form:', memError);
-        console.log('Family forms loaded - head:', !!head?.schema, 'member:', !!mem?.schema);
         setSchema((head?.schema as FormSchema) || null);
         setMemberSchema((mem?.schema as FormSchema) || null);
       }

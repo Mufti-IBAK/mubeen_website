@@ -27,7 +27,7 @@ export default function AboutPage() {
   return (
     <div className="bg-white text-brand-dark">
       {/* Section 1: Page Header / Mission */}
-      <section className="pt-32 pb-20 bg-brand-bg">
+      <section className="pt-32 pb-20 bg-brand-bg" role="region" aria-label="Mission Statement">
         <div className="container px-6 mx-auto text-center">
           <h1 className="text-4xl font-extrabold md:text-5xl text-brand-dark font-heading">
             Our Mission
@@ -39,7 +39,7 @@ export default function AboutPage() {
       </section>
 
       {/* Section 2: Our Story / Vision */}
-      <section className="py-20">
+      <section className="py-20" role="region" aria-label="Our Vision">
         <div className="container px-6 mx-auto">
             <div className="text-center">
                 <h2 className="text-3xl font-extrabold md:text-4xl text-brand-dark font-heading">Our Vision</h2>
@@ -51,16 +51,18 @@ export default function AboutPage() {
       </section>
       
       {/* Section 3: Core Values (Reusing our component) */}
-      <CoreValuesSection />
+      <section role="region" aria-label="Core Values">
+        <CoreValuesSection />
+      </section>
 
       {/* Section 4: Meet the Founder */}
-      <section className="py-20 bg-brand-bg">
+      <section className="py-20 bg-brand-bg" role="region" aria-label="Meet the Founder">
         <div className="container px-6 mx-auto text-center">
           <h2 className="mb-12 text-3xl font-extrabold md:text-4xl text-brand-dark font-heading">Meet Our Founder</h2>
           <div className="max-w-md mx-auto">
              <Image 
-src="/logo.png"
-                alt="Dr. Mufti Ibn Al Khattāb"
+                src="/logo.png"
+                alt="Founder & Lead Instructor: Dr. Mufti Ibn Al Khattāb"
                 width={150}
                 height={150}
                 className="mx-auto rounded-full shadow-lg"
@@ -75,7 +77,7 @@ src="/logo.png"
       </section>
 
       {/* Section 5: FAQ */}
-      <section className="py-20">
+      <section className="py-20" role="region" aria-label="Frequently Asked Questions">
         <div className="container px-6 mx-auto">
           <div className="mb-12 text-center">
             <h2 className="text-3xl font-extrabold md:text-4xl text-brand-dark font-heading">Frequently Asked Questions</h2>

@@ -102,7 +102,7 @@ export default async function HomePage() {
       <TestimonialSlider testimonials={testimonials} quotes={quotes} />
 
       {/* Homepage FAQ */}
-      <section className="py-16 bg-brand-bg">
+      <section className="py-16 bg-brand-bg" role="region" aria-label="Frequently Asked Questions">
         <div className="container-page">
           <div className="mb-8 text-center">
             <h2 className="text-3xl md:text-4xl font-extrabold">Frequently Asked Questions</h2>

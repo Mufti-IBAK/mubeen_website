@@ -40,7 +40,7 @@ export type SupabaseLike = {
 }
 
 // Provide a safe stub when env is missing to prevent dev crashes.
-const makeStub = (): any => {
+const makeStub = (): SupabaseLike => {
   const msg = 'Supabase not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local.'
   const stubQuery: QueryBuilder = {
     select: async () => ({ data: null, error: { message: msg } }),
@@ -66,7 +66,7 @@ const makeStub = (): any => {
   const stubStorage = {
     from: () => ({ upload: async () => ({ error: { message: msg } }), getPublicUrl: () => ({ data: { publicUrl: '' } }) }),
   }
-  return { from: () => stubQuery, auth: stubAuth, storage: stubStorage }
+  return { from: (_t: string) => stubQuery as any, auth: stubAuth, storage: stubStorage }
 }
 
 export const supabase = (supabaseUrl && supabaseAnonKey)

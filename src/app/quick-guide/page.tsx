@@ -50,12 +50,15 @@ export default function QuickGuidePage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {/* Navigation & Dashboard */}
-          <section className="guide-card bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow">
+          <section 
+            className="guide-card bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow"
+            aria-labelledby="nav-platform-heading"
+          >
             <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
+              <div className="p-3 bg-blue-100 text-blue-600 rounded-lg" aria-hidden="true">
                 <FiLayout className="w-6 h-6" />
               </div>
-              <h2 className="text-2xl font-bold font-heading">
+              <h2 id="nav-platform-heading" className="text-2xl font-bold font-heading">
                 Navigating the Platform
               </h2>
             </div>
@@ -82,12 +85,15 @@ export default function QuickGuidePage() {
           </section>
 
           {/* Registration Workflow */}
-          <section className="guide-card bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow">
+          <section 
+            className="guide-card bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow"
+            aria-labelledby="reg-workflow-heading"
+          >
             <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 bg-emerald-100 text-emerald-600 rounded-lg">
+              <div className="p-3 bg-emerald-100 text-emerald-600 rounded-lg" aria-hidden="true">
                 <FiUserCheck className="w-6 h-6" />
               </div>
-              <h2 className="text-2xl font-bold font-heading">
+              <h2 id="reg-workflow-heading" className="text-2xl font-bold font-heading">
                 How to Register
               </h2>
             </div>
@@ -117,12 +123,15 @@ export default function QuickGuidePage() {
           </section>
 
           {/* Payment Workflow */}
-          <section className="guide-card bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow">
+          <section 
+            className="guide-card bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow"
+            aria-labelledby="pay-workflow-heading"
+          >
             <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 bg-amber-100 text-amber-600 rounded-lg">
+              <div className="p-3 bg-amber-100 text-amber-600 rounded-lg" aria-hidden="true">
                 <FiCreditCard className="w-6 h-6" />
               </div>
-              <h2 className="text-2xl font-bold font-heading">
+              <h2 id="pay-workflow-heading" className="text-2xl font-bold font-heading">
                 Payments & Subscriptions
               </h2>
             </div>
@@ -131,7 +140,7 @@ export default function QuickGuidePage() {
                 After registering, you can pay immediately or later via your
                 Dashboard (&quot;Unpaid Enrollments&quot;).
               </p>
-              <div className="bg-[hsl(var(--muted))] p-4 rounded-lg text-sm">
+              <div className="bg-[hsl(var(--muted))] p-4 rounded-lg text-sm" role="note" aria-label="Accepted Methods">
                 <strong>Accepted Methods:</strong> Bank Transfer, Card Payment
                 (Flutterwave).
                 <br />
@@ -149,12 +158,15 @@ export default function QuickGuidePage() {
           </section>
 
           {/* Tips */}
-          <section className="guide-card bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow">
+          <section 
+            className="guide-card bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-2xl p-8 shadow-sm hover:shadow-md transition-shadow"
+            aria-labelledby="pro-tips-heading"
+          >
             <div className="flex items-center gap-4 mb-6">
-              <div className="p-3 bg-purple-100 text-purple-600 rounded-lg">
+              <div className="p-3 bg-purple-100 text-purple-600 rounded-lg" aria-hidden="true">
                 <FiBookOpen className="w-6 h-6" />
               </div>
-              <h2 className="text-2xl font-bold font-heading">Pro Tips</h2>
+              <h2 id="pro-tips-heading" className="text-2xl font-bold font-heading">Pro Tips</h2>
             </div>
             <div className="grid grid-cols-1 gap-3 text-[hsl(var(--muted-foreground))]">
               <div className="flex items-start gap-2">

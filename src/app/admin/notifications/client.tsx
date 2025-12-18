@@ -25,9 +25,8 @@ interface User {
 }
 
 export default function NotificationsClient() {
-  const [activeTab, setActiveTab] = useState<
-    "compose" | "templates" | "history"
-  >("compose");
+  type TabType = "compose" | "templates" | "history";
+  const [activeTab, setActiveTab] = useState<TabType>("compose");
   const [templates, setTemplates] = useState<NotificationTemplate[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,23 +96,20 @@ export default function NotificationsClient() {
         broadcastType === "admins"
       ) {
         // Send broadcast notification
-        const { error } = await supabase.rpc(
-          "send_broadcast_notification",
-          {
-            p_title: notificationTitle,
-            p_message: notificationMessage,
-            p_type: notificationType,
-            p_priority: notificationPriority,
-            p_broadcast_role:
-              broadcastType === "all"
-                ? null
-                : broadcastType === "students"
-                ? "student"
-                : "admin",
-            p_action_url: actionUrl || null,
-            p_action_label: actionLabel || null,
-          }
-        );
+        const { error } = await supabase.rpc("send_broadcast_notification", {
+          p_title: notificationTitle,
+          p_message: notificationMessage,
+          p_type: notificationType,
+          p_priority: notificationPriority,
+          p_broadcast_role:
+            broadcastType === "all"
+              ? null
+              : broadcastType === "students"
+              ? "student"
+              : "admin",
+          p_action_url: actionUrl || null,
+          p_action_label: actionLabel || null,
+        });
 
         if (error) throw error;
       } else if (broadcastType === "selected" && selectedUsers.length > 0) {
@@ -157,7 +153,7 @@ export default function NotificationsClient() {
     setActionLabel(template.action_label || "");
     setActiveTab("compose");
     // Explicitly set broadcast type to all when applying template if not selected
-    if (broadcastType === "selected") setBroadcastType("all"); 
+    if (broadcastType === "selected") setBroadcastType("all");
   };
 
   const typeColors = {
@@ -195,11 +191,11 @@ export default function NotificationsClient() {
         ].map(({ key, label }) => (
           <button
             key={key}
-            onClick={() => setActiveTab(key as any)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-md transition-colors ${
+            onClick={() => setActiveTab(key as TabType)}
+            className={`flex items-center gap-3 px-4 py-2 rounded-md transition-all ${
               activeTab === key
-                ? "bg-white text-blue-600 shadow-sm"
-                : "text-gray-600 hover:text-gray-900"
+                ? "bg-brand-primary text-white shadow-md"
+                : "text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
             }`}
           >
             {label}
@@ -236,7 +232,13 @@ export default function NotificationsClient() {
                         value={key}
                         checked={broadcastType === key}
                         onChange={(e) =>
-                          setBroadcastType(e.target.value as any)
+                          setBroadcastType(
+                            e.target.value as
+                              | "all"
+                              | "students"
+                              | "admins"
+                              | "selected"
+                          )
                         }
                         className="text-blue-600"
                       />
@@ -401,9 +403,7 @@ export default function NotificationsClient() {
                     Sending...
                   </>
                 ) : (
-                  <>
-                    Send Notification
-                  </>
+                  <>Send Notification</>
                 )}
               </button>
             </div>

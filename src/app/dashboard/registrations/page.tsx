@@ -46,7 +46,7 @@ type Plan = { id: number; price: number; currency: string };
 export default function DashboardRegistrationsPage() {
   const router = useRouter();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
-  const [successPayments, setSuccessPayments] = useState<Array<{ id: number; program_id: number|null; skill_id: number|null; program_title: string|null; amount: number|null; currency: string|null; created_at: string; type: string; status: string }>>([]);
+  const [successPayments, setSuccessPayments] = useState<Array<{ id: number; program_id: number|null; skill_id: number|null; program_title: string|null; amount: number|null; currency: string|null; created_at: string; type: string; status: string; category?: string|null; subscription_type?: string|null }>>([]);
   const [programs, setPrograms] = useState<Record<number, Program>>({});
   const [skills, setSkills] = useState<Record<number, { id: number; title: string; slug?: string }>>({});
   const [plans, setPlans] = useState<Record<number, Plan>>({});
