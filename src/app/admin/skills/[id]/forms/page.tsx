@@ -1,17 +1,17 @@
 import React from "react";
 import Link from "next/link";
-import { ProgramFormsClient } from "./FormClient";
+import { SkillFormsClient } from "./FormClient";
 
-export default async function ProgramFormsPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function SkillFormsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const programId = Number(id);
+  const skillId = Number(id);
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
-        <h1 className="text-2xl font-bold text-brand-dark font-heading">Program Forms</h1>
-        <Link href={`/admin/programs`}>Back to Programs</Link>
+        <h1 className="text-2xl font-bold text-brand-dark font-heading">Skill Forms</h1>
+        <Link href={`/admin/skills`}>Back to Skills</Link>
       </div>
-      <ProgramFormsClient programId={programId} />
+      <SkillFormsClient skillId={skillId} />
     </div>
   );
 }

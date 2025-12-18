@@ -1,38 +1,38 @@
-22:58:52.785 Running build in Washington, D.C., USA (East) – iad1
-22:58:52.785 Build machine configuration: 2 cores, 8 GB
-22:58:52.920 Cloning github.com/Mufti-IBAK/mubeen_website (Branch: master, Commit: fd13b31)
-22:58:53.359 Cloning completed: 439.000ms
-22:58:54.354 Restored build cache from previous deployment (FLGq9vmyjH4XZWjmZHjoGUY9uPBF)
-22:58:55.055 Running "vercel build"
-22:58:55.477 Vercel CLI 50.0.1
-22:58:55.924 Installing dependencies...
-22:58:57.516 
-22:58:57.518 up to date in 1s
-22:58:57.518 
-22:58:57.519 163 packages are looking for funding
-22:58:57.519   run `npm fund` for details
-22:58:57.547 Detected Next.js version: 16.0.10
-22:58:57.551 Running "npm run build"
-22:58:57.664 
-22:58:57.665 > mubeen_website@0.1.0 build
-22:58:57.665 > next build
-22:58:57.665 
-22:58:58.472    ▲ Next.js 16.0.10 (Turbopack)
-22:58:58.473 
-22:58:58.555    Creating an optimized production build ...
-22:59:18.870  ✓ Compiled successfully in 20.0s
-22:59:18.874    Running TypeScript ...
-22:59:30.261 Failed to compile.
-22:59:30.262 
-22:59:30.262 ./src/app/admin/forms/page.tsx:29:31
-22:59:30.262 Type error: Parameter 'p' implicitly has an 'any' type.
-22:59:30.262 
-22:59:30.262 [0m [90m 27 |[39m
-22:59:30.262  [90m 28 |[39m       [36mconst[39m combined[33m:[39m [33mEntity[39m[] [33m=[39m [
-22:59:30.263 [31m[1m>[22m[39m[90m 29 |[39m         [33m...[39m(progs [33m||[39m [])[33m.[39mmap((p) [33m=>[39m ({ [33m...[39mp[33m,[39m type[33m:[39m [32m"program"[39m [36mas[39m [36mconst[39m }))[33m,[39m
-22:59:30.263  [90m    |[39m                               [31m[1m^[22m[39m
-22:59:30.263  [90m 30 |[39m         [33m...[39m(skills [33m||[39m [])[33m.[39mmap((s) [33m=>[39m ({ [33m...[39ms[33m,[39m type[33m:[39m [32m"skill"[39m [36mas[39m [36mconst[39m }))[33m,[39m
-22:59:30.263  [90m 31 |[39m       ][33m;[39m
-22:59:30.263  [90m 32 |[39m       setEntities(combined)[33m;[39m[0m
-22:59:30.306 Next.js build worker exited with code: 1 and signal: null
-22:59:30.352 Error: Command "npm run build" exited with 1
+23:15:08.854 Running build in Washington, D.C., USA (East) – iad1
+23:15:08.855 Build machine configuration: 2 cores, 8 GB
+23:15:09.031 Cloning github.com/Mufti-IBAK/mubeen_website (Branch: master, Commit: 0346892)
+23:15:09.606 Cloning completed: 574.000ms
+23:15:10.792 Restored build cache from previous deployment (FLGq9vmyjH4XZWjmZHjoGUY9uPBF)
+23:15:12.880 Running "vercel build"
+23:15:13.417 Vercel CLI 50.0.1
+23:15:13.919 Installing dependencies...
+23:15:16.480 
+23:15:16.481 up to date in 2s
+23:15:16.481 
+23:15:16.481 163 packages are looking for funding
+23:15:16.482   run `npm fund` for details
+23:15:16.519 Detected Next.js version: 16.0.10
+23:15:16.524 Running "npm run build"
+23:15:16.667 
+23:15:16.668 > mubeen_website@0.1.0 build
+23:15:16.668 > next build
+23:15:16.668 
+23:15:17.639    ▲ Next.js 16.0.10 (Turbopack)
+23:15:17.640 
+23:15:17.743    Creating an optimized production build ...
+23:15:43.620  ✓ Compiled successfully in 25.4s
+23:15:43.628    Running TypeScript ...
+23:15:58.525 Failed to compile.
+23:15:58.526 
+23:15:58.526 ./src/app/admin/skills/[id]/forms/page.tsx:3:10
+23:15:58.526 Type error: Module '"./FormClient"' has no exported member 'ProgramFormsClient'.
+23:15:58.527 
+23:15:58.527 [0m [90m 1 |[39m [36mimport[39m [33mReact[39m [36mfrom[39m [32m"react"[39m[33m;[39m
+23:15:58.527  [90m 2 |[39m [36mimport[39m [33mLink[39m [36mfrom[39m [32m"next/link"[39m[33m;[39m
+23:15:58.527 [31m[1m>[22m[39m[90m 3 |[39m [36mimport[39m { [33mProgramFormsClient[39m } [36mfrom[39m [32m"./FormClient"[39m[33m;[39m
+23:15:58.528  [90m   |[39m          [31m[1m^[22m[39m
+23:15:58.528  [90m 4 |[39m
+23:15:58.528  [90m 5 |[39m [36mexport[39m [36mdefault[39m [36masync[39m [36mfunction[39m [33mProgramFormsPage[39m({ params }[33m:[39m { params[33m:[39m [33mPromise[39m[33m<[39m{ id[33m:[39m string }[33m>[39m }) {
+23:15:58.528  [90m 6 |[39m   [36mconst[39m { id } [33m=[39m [36mawait[39m params[33m;[39m[0m
+23:15:58.594 Next.js build worker exited with code: 1 and signal: null
+23:15:58.648 Error: Command "npm run build" exited with 1
