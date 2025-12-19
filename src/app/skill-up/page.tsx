@@ -35,11 +35,25 @@ async function ProgramsPage(): Promise<React.JSX.Element> {
       });
     }
 
-    programs = ((data || []) as Program[]).map(p => {
-       const period = subMap[p.id] === 'one-time' ? '' : `/${subMap[p.id] === 'monthly' ? 'mo' : (subMap[p.id] === 'yearly' ? 'yr' : 'wk')}`;
+    // Fetch slot counts (enrollments with status='paid' or 'registered')
+    const { data: enrollmentCounts } = await supabase
+      .from("enrollments")
+      .select("skill_id")
+      .or('status.eq.paid,status.eq.registered');
+
+    const enrollCountMap: Record<number, number> = {};
+    (enrollmentCounts || []).forEach((e: any) => {
+      if (e.skill_id) {
+        enrollCountMap[e.skill_id] = (enrollCountMap[e.skill_id] || 0) + 1;
+      }
+    });
+
+    programs = ((data || []) as any[]).map(s => {
+       const period = subMap[s.id] === 'one-time' ? '' : `/${subMap[s.id] === 'monthly' ? 'mo' : (subMap[s.id] === 'yearly' ? 'yr' : 'wk')}`;
        return {
-         ...p,
-         price_start: plansMap[p.id] ? `${currencyMap[p.id]} ${plansMap[p.id].toLocaleString()}${period}` : undefined
+         ...s,
+         paid_count: enrollCountMap[s.id] || 0,
+         price_start: plansMap[s.id] ? `${currencyMap[s.id]} ${plansMap[s.id].toLocaleString()}${period}` : undefined
        };
     });
   } catch (error: any) {

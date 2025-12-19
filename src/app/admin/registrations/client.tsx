@@ -10,17 +10,22 @@ export default function RegistrationsClient() {
   const [grouped, setGrouped] = useState<{ user_id: string|null; user_name: string; user_email: string; count: number; latest: string }[]>([]);
   const [profiles, setProfiles] = useState<Record<string, { full_name?: string | null; phone?: string | null }>>({});
   const [exporting, setExporting] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
 
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
       const { data: session } = await supabase.auth.getSession();
       const token = session.session?.access_token;
-      const res = await fetch('/api/admin/registrations/success-enroll/all', { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
+      const res = await fetch(`/api/admin/registrations/all?page=${page}&limit=50`, { headers: token ? { Authorization: `Bearer ${token}` } : undefined });
       if (!res.ok) throw new Error('failed');
       const json = await res.json();
       const groups = (json.items || []) as typeof grouped;
       setGrouped(groups);
+      setTotalPages(json.totalPages || 1);
+      setTotal(json.total || 0);
 
       // Load profile data (full_name, phone) for users in these groups
       const ids = Array.from(new Set(groups.map((g) => g.user_id).filter((id): id is string => typeof id === 'string')));
@@ -38,9 +43,9 @@ export default function RegistrationsClient() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [page]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => { load(); }, [load, page]);
 
   const exportCsv = React.useCallback(() => {
     if (!grouped.length) return;
@@ -110,16 +115,51 @@ export default function RegistrationsClient() {
             const linkId = g.user_id ? g.user_id : (g.user_email ? encodeURIComponent(g.user_email) : 'unknown-null');
             return (
               <div key={keySafe || String(idx)} className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm p-4 transition-all hover:shadow-md hover:-translate-y-0.5">
-                <h3 className="text-lg font-semibold">{g.user_name || '—'}</h3>
-                <p className="text-sm text-[hsl(var(--muted-foreground))]">{g.user_email || '—'}</p>
-                <p className="mt-2 text-sm"><span className="font-medium">Programs:</span> {g.count}</p>
-                <p className="text-xs text-[hsl(var(--muted-foreground))]">Applied: {new Date(g.latest).toLocaleDateString()}</p>
-                <Link className="btn-outline mt-3 inline-block" href={`/admin/registrations/user/${linkId}`}>View Details</Link>
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="text-lg font-semibold truncate flex-1 mr-2">{g.user_name || '—'}</h3>
+                  <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                    (g as any).status === 'paid' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
+                  }`}>
+                    {(g as any).status || 'pending'}
+                  </span>
+                </div>
+                <p className="text-sm text-[hsl(var(--muted-foreground))] mb-3">{g.user_email || '—'}</p>
+                
+                <div className="space-y-1">
+                  <p className="text-sm"><span className="font-medium">Total Courses:</span> {g.count}</p>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))]">Latest: {new Date(g.latest).toLocaleDateString()}</p>
+                </div>
+
+                <Link className="btn-outline w-full mt-4 text-center py-2" href={`/admin/registrations/user/${linkId}`}>
+                  Management Details
+                </Link>
               </div>
             );
           })
         )}
       </div>
+
+      {totalPages > 1 && (
+        <div className="mt-8 flex items-center justify-center gap-4">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={page === 1 || loading}
+            className="btn-outline px-6 py-2 disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span className="text-sm font-medium">
+            Page {page} of {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={page === totalPages || loading}
+            className="btn-outline px-6 py-2 disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
     </div>
   );
 }

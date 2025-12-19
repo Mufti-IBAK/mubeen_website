@@ -63,8 +63,6 @@ export default function PaymentClient() {
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [lockedSe, setLockedSe] = useState<number | null>(null);
-  const [lockedCategory, setLockedCategory] = useState<string | null>(null);
-  const [lockedParticipants, setLockedParticipants] = useState<number>(1);
 
   useEffect(() => {
     const init = async () => {
@@ -103,11 +101,9 @@ export default function PaymentClient() {
             setLockedSe(seId);
             setSelectedSeId(seId);
 
-            // Derive amount from individual plan and participant_count with discount
+            // Derive amount from individual plan
             let amount = seRow.amount as number | null;
             let currency = seRow.currency as string | null;
-            const participants = Number(seRow.participant_count || 1);
-            setLockedParticipants(participants);
 
             // Logic for auto-calculating price if missing
             if (!amount || Number(amount) === 0) {
@@ -183,11 +179,11 @@ export default function PaymentClient() {
             : {}),
         }));
 
-        // Load pending success_enroll rows for this user (unpaid registrations)
+        // Load pending enrollment rows for this user (unpaid registrations)
         const { data: seRows } = await supabase
-          .from("success_enroll")
+          .from("enrollments")
           .select(
-            "id, program_id, skill_id, program_title, created_at, status, type"
+            "id, program_id, skill_id, description, created_at, status"
           )
           .eq("user_id", user.id)
           .eq("status", "pending")
@@ -358,7 +354,7 @@ export default function PaymentClient() {
     } else if (value.startsWith("program:")) {
       const pid = Number(value.split(":")[1]);
       const match = pendingSe.find(
-        (row) => row.program_id === pid && (row.type === "program" || !row.type)
+        (row) => row.program_id === pid
       );
       setSelectedSeId(match ? match.id : null);
       setForm((f) => ({
@@ -371,7 +367,7 @@ export default function PaymentClient() {
     } else if (value.startsWith("skill:")) {
       const sid = Number(value.split(":")[1]);
       const match = pendingSe.find(
-        (row) => row.skill_id === sid && row.type === "skill"
+        (row) => row.skill_id === sid
       );
       setSelectedSeId(match ? match.id : null);
       setForm((f) => ({
@@ -579,18 +575,13 @@ export default function PaymentClient() {
                 (selectedPlan || lockedSe) && (
                   <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
                     Automatically set from registration
-                    {selectedPlan?.subscription_type && selectedPlan.subscription_type !== 'one-time' && (
+                    {selectedPlan?.subscription_type && selectedPlan.subscription_type !== 'once' && (
                       <span> ({selectedPlan.subscription_type})</span>
                     )}
                     .
                   </p>
                 )}
             </div>
-            {lockedCategory && (
-              <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                Category: {lockedCategory}
-              </p>
-            )}
 
             {message && <p className="text-red-600 text-sm">{message}</p>}
 

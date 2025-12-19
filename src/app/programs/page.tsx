@@ -39,10 +39,24 @@ async function ProgramsPage(): Promise<React.JSX.Element> {
       });
     }
 
+    // Fetch slot counts (enrollments with status='paid' or 'registered')
+    const { data: enrollmentCounts } = await supabase
+      .from("enrollments")
+      .select("program_id")
+      .or('status.eq.paid,status.eq.registered');
+
+    const enrollCountMap: Record<number, number> = {};
+    (enrollmentCounts || []).forEach((e: any) => {
+      if (e.program_id) {
+        enrollCountMap[e.program_id] = (enrollCountMap[e.program_id] || 0) + 1;
+      }
+    });
+
     programs = ((data || []) as Program[]).map(p => {
        const period = subMap[p.id] === 'one-time' ? '' : `/${subMap[p.id] === 'monthly' ? 'mo' : (subMap[p.id] === 'yearly' ? 'yr' : 'wk')}`;
        return {
          ...p,
+         paid_count: enrollCountMap[p.id] || 0,
          price_start: plansMap[p.id] ? `${currencyMap[p.id]} ${plansMap[p.id].toLocaleString()}${period}` : undefined
        };
     });

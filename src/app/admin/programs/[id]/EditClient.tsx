@@ -19,6 +19,22 @@ export default function AdminProgramsEditClient({
   const id = programId;
   const [loading, setLoading] = React.useState(true);
   const [message, setMessage] = React.useState("");
+  
+  const formatForInput = (dateStr: string | null | undefined) => {
+    if (!dateStr) return "";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "";
+      // datetime-local expects YYYY-MM-DDTHH:mm
+      // We use a local-time equivalent formatting
+      const offset = d.getTimezoneOffset() * 60000;
+      const localISOTime = new Date(d.getTime() - offset).toISOString().slice(0, 16);
+      return localISOTime;
+    } catch {
+      return "";
+    }
+  };
+
   const [form, setForm] = React.useState({
     title: "",
     slug: "",
@@ -34,6 +50,7 @@ export default function AdminProgramsEditClient({
     outcomes: "", // comma-separated for UI
     start_date: "",
     enrollment_deadline: "",
+    max_slots: "" as string | number,
   });
   // Guided editors state
   type Instructor = { name: string; title?: string; avatar_url?: string };
@@ -87,8 +104,9 @@ export default function AdminProgramsEditClient({
           outcomes: Array.isArray(data.outcomes)
             ? data.outcomes.join(", ")
             : "",
-          start_date: data.start_date || "",
-          enrollment_deadline: data.enrollment_deadline || "",
+          start_date: formatForInput(data.start_date),
+          enrollment_deadline: formatForInput(data.enrollment_deadline),
+          max_slots: data.max_slots ?? "",
         });
         // Parse guided editor fields
         try {
@@ -199,6 +217,7 @@ export default function AdminProgramsEditClient({
       schedule,
       start_date: form.start_date || null,
       enrollment_deadline: form.enrollment_deadline || null,
+      max_slots: form.max_slots !== "" ? Number(form.max_slots) : null,
     };
 
     // Include Supabase access token so API route can verify admin
@@ -670,6 +689,19 @@ export default function AdminProgramsEditClient({
                 setForm({ ...form, enrollment_deadline: e.target.value })
               }
               className="input"
+            />
+          </div>
+          <div>
+            <label className="block text-sm mb-1" htmlFor="max_slots">
+              Maximum Slots (Leave empty for unlimited)
+            </label>
+            <input
+              id="max_slots"
+              type="number"
+              value={form.max_slots}
+              onChange={(e) => setForm({ ...form, max_slots: e.target.value })}
+              className="input"
+              placeholder="e.g. 50"
             />
           </div>
         </div>

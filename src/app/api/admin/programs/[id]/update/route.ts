@@ -63,7 +63,7 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const allowed = [
       "title","slug","description","image_url","duration","tags","is_flagship",
       "overview","prerequisites","level","language","outcomes",
-      "instructors","faqs","schedule","start_date","enrollment_deadline",
+      "instructors","faqs","schedule","start_date","enrollment_deadline","max_slots",
     ];
     for (const k of allowed) if (k in body) patch[k] = body[k];
 

@@ -57,7 +57,26 @@ export async function POST(req: NextRequest) {
       }
 
       if (!draftId) {
-        console.warn('Webhook missing draft id; aborting');
+        // Check for renewal
+        if (typeof rawRef === 'string' && rawRef.startsWith('renew-')) {
+          const enrollId = Number(rawRef.split('-')[1]);
+          const { data: existing } = await admin.from('enrollments').select('*').eq('id', enrollId).single();
+          if (existing) {
+            const baseDate = existing.expires_at ? (new Date(existing.expires_at) > new Date() ? new Date(existing.expires_at) : new Date()) : new Date();
+            let nextExpiry = new Date(baseDate);
+            if (existing.subscription_type === 'monthly') nextExpiry.setMonth(nextExpiry.getMonth() + 1);
+            else if (existing.subscription_type === 'yearly') nextExpiry.setFullYear(nextExpiry.getFullYear() + 1);
+            else if (existing.subscription_type === 'weekly') nextExpiry.setDate(nextExpiry.getDate() + 7);
+
+            await admin.from('enrollments').update({
+              expires_at: nextExpiry.toISOString(),
+              payment_status: 'paid',
+              transaction_id
+            }).eq('id', enrollId);
+            return new NextResponse('Renewal processed', { status: 200 });
+          }
+        }
+        console.warn('Webhook missing identifier; aborting');
       } else {
         // Load draft
         const { data: draft, error: dErr } = await admin
@@ -72,21 +91,39 @@ export async function POST(req: NextRequest) {
           let durationMonths: number | null = null;
           let planPrice: number | null = null;
           let planCurrency: string | null = null;
+          let subType: string | null = null;
+
           if (finalPlanId) {
-            const { data: planRow } = await admin.from('program_plans').select('duration_months,price,currency').eq('id', finalPlanId).maybeSingle();
-            durationMonths = (planRow as any)?.duration_months ?? null;
-            planPrice = planPrice ?? (planRow as any)?.price ?? null;
+            const { data: planRow } = await admin.from('pricing_plans').select('price,currency,subscription_type').eq('id', finalPlanId).maybeSingle();
+            planPrice = (planRow as any)?.price ?? null;
             planCurrency = (planRow as any)?.currency ?? null;
+            subType = (planRow as any)?.subscription_type ?? null;
           }
+
+          // Expiry Logic
+          let expiresAt: Date | null = null;
+          if (subType === 'monthly') {
+            expiresAt = new Date();
+            expiresAt.setMonth(expiresAt.getMonth() + 1);
+          } else if (subType === 'yearly') {
+            expiresAt = new Date();
+            expiresAt.setFullYear(expiresAt.getFullYear() + 1);
+          } else if (subType === 'weekly') {
+            expiresAt = new Date();
+            expiresAt.setDate(expiresAt.getDate() + 7);
+          }
+
           const payload: Record<string, any> = {
             user_id: (draft as any).user_id,
             program_id: (draft as any).program_id,
+            skill_id: (draft as any).skill_id,
             is_family: (draft as any).registration_type === 'family_head',
             family_size: (draft as any).registration_type === 'family_head' ? (draft as any).family_size : null,
             status: 'registered',
             payment_status: 'paid',
             plan_id: finalPlanId,
-            duration_months: durationMonths,
+            subscription_type: subType,
+            expires_at: expiresAt?.toISOString() || null,
             form_data: (draft as any).draft_data || {},
             amount: paidAmount || planPrice,
             currency: paidCurrency || planCurrency,

@@ -24,7 +24,21 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
   const now = new Date();
   const deadlineStr = program.enrollment_deadline as string | null;
   const deadlineAt = deadlineStr ? new Date(deadlineStr) : null;
-  const isClosed = !!deadlineAt && deadlineAt.getTime() < now.getTime();
+  const isDeadlinePassed = !!deadlineAt && deadlineAt.getTime() < now.getTime();
+
+  // Slot logic
+  const { count: paidCount } = await supabase
+    .from('enrollments')
+    .select('*', { count: 'exact', head: true })
+    .eq('program_id', program.id)
+    .or('status.eq.paid,status.eq.registered');
+  
+  const maxSlots = program.max_slots as number | null;
+  const isFull = maxSlots !== null && (paidCount || 0) >= maxSlots;
+  const slotsLeft = maxSlots !== null ? Math.max(0, maxSlots - (paidCount || 0)) : null;
+
+  const isClosed = isDeadlinePassed || isFull;
+  const closedMessage = isFull ? "Registration Full" : "Registration closed";
 
   return (
     <div className="pt-16 bg-brand-bg">
@@ -103,11 +117,19 @@ export default async function ProgramDetailPage({ params }: { params: Promise<{ 
                     </div>
                   )}
                   {program.is_flagship && ( <div><p className="text-sm text-brand-dark/60">Program Type</p><p className="font-semibold text-brand-primary">Flagship Program</p></div>)}
+                  {maxSlots !== null && (
+                    <div>
+                      <p className="text-sm text-brand-dark/60">Availability</p>
+                      <p className={`font-semibold ${isFull ? 'text-destructive' : 'text-brand-dark'}`}>
+                        {isFull ? 'Fully Booked' : `${slotsLeft} ${slotsLeft === 1 ? 'slot' : 'slots'} remaining`}
+                      </p>
+                    </div>
+                  )}
                 </div>
                 {/* Registration button with deadline guard */}
                 {isClosed ? (
                   <button className="w-full py-3 mt-6 font-semibold text-white rounded-md bg-gray-400 cursor-not-allowed" disabled>
-                    Registration closed
+                    {closedMessage}
                   </button>
                 ) : (
                   <Link href={`/programs/${program.slug}/register`} prefetch>

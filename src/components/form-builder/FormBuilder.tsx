@@ -173,6 +173,8 @@ export const FormBuilder: React.FC<{
     initial || { title: "", fields: [] }
   );
   const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [dropBeforeIndex, setDropBeforeIndex] = useState<number | null>(null);
+  const [isDraggingNew, setIsDraggingNew] = useState(false);
 
   const types = useMemo(
     () =>
@@ -202,7 +204,10 @@ export const FormBuilder: React.FC<{
       type,
       required: false,
       style: {},
-      options: type === 'select' || type === 'radio' || type === 'checkbox' ? [] : undefined,
+      options:
+        type === "select" || type === "radio" || type === "checkbox"
+          ? []
+          : undefined,
     };
     const next = { ...schema, fields: [...schema.fields, newField] };
     setSchema(next);
@@ -229,7 +234,10 @@ export const FormBuilder: React.FC<{
   };
 
   const removeField = (id: string) => {
-    const next = { ...schema, fields: schema.fields.filter((f) => f.id !== id) };
+    const next = {
+      ...schema,
+      fields: schema.fields.filter((f) => f.id !== id),
+    };
     setSchema(next);
     onChange(next);
   };
@@ -250,7 +258,12 @@ export const FormBuilder: React.FC<{
   // Ensure first item is a section
   useEffect(() => {
     if (!schema.fields.length || schema.fields[0].type !== "section") {
-      const section: FormFieldDef = { id: `${Date.now()}-sec`, label: "", type: "section", required: false };
+      const section: FormFieldDef = {
+        id: `${Date.now()}-sec`,
+        label: "",
+        type: "section",
+        required: false,
+      };
       const next = { ...schema, fields: [section, ...schema.fields] };
       setSchema(next);
       onChange(next);
@@ -270,10 +283,14 @@ export const FormBuilder: React.FC<{
           if (isAddingDrag) e.preventDefault();
         }}
         onDrop={(e) => {
-          const t = e.dataTransfer.getData("text/plain") as FieldType;
-          setIsAddingDrag(false);
-          if (t && TYPE_META[t]) {
-            addField(t);
+          if (isDraggingNew) {
+            const t = e.dataTransfer.getData("text/plain") as FieldType;
+            setIsAddingDrag(false);
+            setIsDraggingNew(false);
+            setDropBeforeIndex(null);
+            if (t && TYPE_META[t]) {
+              addField(t);
+            }
           }
         }}
       >
@@ -309,7 +326,9 @@ export const FormBuilder: React.FC<{
           {schema.fields.length === 0 && (
             <div className="flex items-center gap-3 rounded-lg border border-dashed border-[hsl(var(--border))] p-5 text-[hsl(var(--muted-foreground))]">
               <FiAlertCircle className="shrink-0" />
-              <p className="text-sm">No fields yet — drag a field from the right or click to add.</p>
+              <p className="text-sm">
+                No fields yet — drag a field from the right or click to add.
+              </p>
             </div>
           )}
 
@@ -332,7 +351,9 @@ export const FormBuilder: React.FC<{
                   <div className="flex items-center justify-between">
                     <div className="inline-flex items-center gap-2 text-red-700">
                       <FiAlertCircle className="h-4 w-4" />
-                      <span className="text-sm font-medium">Unknown field type: {f.type}</span>
+                      <span className="text-sm font-medium">
+                        Unknown field type: {f.type}
+                      </span>
                     </div>
                     <button
                       type="button"
@@ -353,38 +374,92 @@ export const FormBuilder: React.FC<{
             return (
               <div
                 key={f.id}
-                className="fb-field group rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm transition hover:shadow-md"
+                className={`fb-field group relative rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm transition-all duration-200 ${
+                  dragIndex === idx
+                    ? "opacity-40 scale-[0.98] border-dashed"
+                    : "hover:shadow-md"
+                } ${dropBeforeIndex === idx ? "mt-12" : ""}`}
                 onDragOver={(e) => {
-                  if (dragIndex !== null) e.preventDefault();
+                  e.preventDefault();
+                  if (dragIndex !== null && dragIndex !== idx) {
+                    setDropBeforeIndex(idx);
+                  } else if (isDraggingNew) {
+                    setDropBeforeIndex(idx);
+                  }
+                }}
+                onDragLeave={() => {
+                  if (dropBeforeIndex === idx) setDropBeforeIndex(null);
                 }}
                 onDrop={(e) => {
                   e.preventDefault();
-                  if (dragIndex !== null) {
+                  const newType = e.dataTransfer.getData(
+                    "text/plain"
+                  ) as FieldType;
+                  if (newType && TYPE_META[newType]) {
+                    // Logic for inserting new field at specific index
+                    const newField: FormFieldDef = {
+                      id: `${Date.now()}`,
+                      label: "",
+                      type: newType,
+                      required: false,
+                      style: {},
+                    };
+                    const nextFields = [...schema.fields];
+                    nextFields.splice(idx, 0, newField);
+                    const next = { ...schema, fields: nextFields };
+                    setSchema(next);
+                    onChange(next);
+                  } else if (dragIndex !== null) {
                     moveField(dragIndex, idx);
-                    setDragIndex(null);
                   }
+                  setDragIndex(null);
+                  setDropBeforeIndex(null);
+                  setIsDraggingNew(false);
                 }}
               >
+                {/* Drop Indicator */}
+                {dropBeforeIndex === idx && (
+                  <div className="absolute -top-8 left-0 right-0 flex items-center justify-center">
+                    <div className="h-0.5 w-full bg-[hsl(var(--primary))] rounded-full animate-pulse" />
+                    <span className="absolute bg-[hsl(var(--primary))] text-white text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                      Insert Here
+                    </span>
+                  </div>
+                )}
                 {/* Field header */}
                 <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[hsl(var(--border))]">
-                  <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ring-1 bg-gradient-to-b ${Meta.tint}`}>
-                    <span className={`inline-flex items-center gap-1 rounded-full px-2 py-1 ${Meta.badge}`}>
+                  <div
+                    className={`inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium ring-1 bg-gradient-to-b ${Meta.tint}`}
+                  >
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2 py-1 ${Meta.badge}`}
+                    >
                       <BadgeIcon className="h-3.5 w-3.5" />
                       <span>{Meta.label}</span>
                     </span>
                   </div>
-
                   <div className="flex items-center gap-2">
-                    <button
-                      type="button"
+                    <div
                       draggable
-                      onDragStart={() => setDragIndex(idx)}
+                      onDragStart={(e) => {
+                        setDragIndex(idx);
+                        // Make the drag image subtle
+                        const ghost =
+                          e.currentTarget.parentElement?.parentElement;
+                        if (ghost) {
+                          e.dataTransfer.setDragImage(ghost, 20, 20);
+                        }
+                      }}
+                      onDragEnd={() => {
+                        setDragIndex(null);
+                        setDropBeforeIndex(null);
+                      }}
                       className="inline-flex items-center gap-2 rounded-md border border-[hsl(var(--border))] px-3 py-1.5 text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] cursor-grab active:cursor-grabbing"
                       aria-label="Drag to reorder"
                       title="Drag to reorder"
                     >
                       <FiMove />
-                    </button>
+                    </div>
                     <button
                       type="button"
                       onClick={() => removeField(f.id)}
@@ -405,26 +480,34 @@ export const FormBuilder: React.FC<{
                       className="flex-1 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-3 py-2 text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
                       placeholder={isSection ? "Section title" : "Question"}
                       value={f.label}
-                      onChange={(e) => updateField(f.id, { label: e.target.value })}
+                      onChange={(e) =>
+                        updateField(f.id, { label: e.target.value })
+                      }
                     />
 
                     {!isSection && (
                       <select
                         className="w-full md:w-56 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-3 py-2 text-[hsl(var(--foreground))] focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
                         value={f.type}
-                        onChange={(e) => updateField(f.id, { type: e.target.value as FieldType })}
+                        onChange={(e) =>
+                          updateField(f.id, {
+                            type: e.target.value as FieldType,
+                          })
+                        }
                         aria-label="Field type"
                         title="Field type"
                       >
-                        {types.filter((t) => t !== "section").map((t) => {
-                          const Meta = TYPE_META[t];
-                          if (!Meta) return null; // Skip unknown types
-                          return (
-                            <option key={t} value={t}>
-                              {Meta.label}
-                            </option>
-                          );
-                        })}
+                        {types
+                          .filter((t) => t !== "section")
+                          .map((t) => {
+                            const Meta = TYPE_META[t];
+                            if (!Meta) return null; // Skip unknown types
+                            return (
+                              <option key={t} value={t}>
+                                {Meta.label}
+                              </option>
+                            );
+                          })}
                       </select>
                     )}
                   </div>
@@ -432,19 +515,37 @@ export const FormBuilder: React.FC<{
                   {/* Style toolbar */}
                   {!isSection && (
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-[hsl(var(--muted-foreground))]">Label style:</span>
+                      <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                        Label style:
+                      </span>
                       <button
                         type="button"
-                        onClick={() => updateField(f.id, { style: { ...f.style, bold: !f.style?.bold } })}
-                        className={`inline-flex items-center rounded-md border px-2 py-1 text-xs ${f.style?.bold ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] border-transparent" : "border-[hsl(var(--border))] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]"}`}
+                        onClick={() =>
+                          updateField(f.id, {
+                            style: { ...f.style, bold: !f.style?.bold },
+                          })
+                        }
+                        className={`inline-flex items-center rounded-md border px-2 py-1 text-xs ${
+                          f.style?.bold
+                            ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] border-transparent"
+                            : "border-[hsl(var(--border))] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]"
+                        }`}
                         title="Bold"
                       >
                         <FiBold />
                       </button>
                       <button
                         type="button"
-                        onClick={() => updateField(f.id, { style: { ...f.style, italic: !f.style?.italic } })}
-                        className={`inline-flex items-center rounded-md border px-2 py-1 text-xs ${f.style?.italic ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] border-transparent" : "border-[hsl(var(--border))] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]"}`}
+                        onClick={() =>
+                          updateField(f.id, {
+                            style: { ...f.style, italic: !f.style?.italic },
+                          })
+                        }
+                        className={`inline-flex items-center rounded-md border px-2 py-1 text-xs ${
+                          f.style?.italic
+                            ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] border-transparent"
+                            : "border-[hsl(var(--border))] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--muted))]"
+                        }`}
                         title="Italic"
                       >
                         <FiItalic />
@@ -455,61 +556,94 @@ export const FormBuilder: React.FC<{
                   {/* Description */}
                   <div>
                     <label className="mb-1 block text-xs font-medium text-[hsl(var(--muted-foreground))]">
-                      {isSection ? "Section description" : "Field description (optional)"}
+                      {isSection
+                        ? "Section description"
+                        : "Field description (optional)"}
                     </label>
                     <textarea
                       className="w-full rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-3 py-2 text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] min-h-[72px]"
-                      placeholder={isSection ? "Describe this section" : "Add guidance for the user"}
+                      placeholder={
+                        isSection
+                          ? "Describe this section"
+                          : "Add guidance for the user"
+                      }
                       value={f.description || ""}
-                      onChange={(e) => updateField(f.id, { description: e.target.value })}
+                      onChange={(e) =>
+                        updateField(f.id, { description: e.target.value })
+                      }
                     />
                   </div>
 
-
                   {/* Options editor (Google Forms style) */}
-                  {!isSection && (f.type === "select" || f.type === "radio" || f.type === "checkbox") && (
-                    <div>
-                      <label className="mb-1 block text-xs font-medium text-[hsl(var(--muted-foreground))]">
-                        Options
-                      </label>
-                      <div className="space-y-2">
-                        {(() => {
-                          const opts = Array.isArray(f.options) ? f.options : [];
-                          // Ensure there is one trailing empty input
-                          const rows = [...opts, ""];
-                          return rows.map((val, i) => (
-                            <div key={i} className={`flex items-center gap-2 ${val ? '' : 'opacity-70'}`}>
-                              {/* faded control icon */}
-                              <span className={`inline-block h-4 w-4 rounded-full border ${val ? 'border-[hsl(var(--foreground))]' : 'border-[hsl(var(--muted-foreground))]'}`} />
-                              <input
-                                className="flex-1 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-3 py-1.5 text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
-                                placeholder={`Option ${i + 1}`}
-                                value={val}
-                                onChange={(e) => {
-                                  const next = [...opts];
-                                  const v = e.target.value;
-                                  if (i < opts.length) {
-                                    next[i] = v;
-                                  } else if (v.trim()) {
-                                    next.push(v);
-                                  }
-                                  // Remove empty options except the trailing one
-                                  const cleaned = next.filter((s) => s.trim() !== "");
-                                  updateField(f.id, { options: cleaned });
-                                }}
-                              />
-                              {val && (
-                                <button type="button" className="btn-ghost text-xs" onClick={() => {
-                                  const next = (f.options || []).filter((_, idx) => idx !== i);
-                                  updateField(f.id, { options: next });
-                                }}>Remove</button>
-                              )}
-                            </div>
-                          ));
-                        })()}
+                  {!isSection &&
+                    (f.type === "select" ||
+                      f.type === "radio" ||
+                      f.type === "checkbox") && (
+                      <div>
+                        <label className="mb-1 block text-xs font-medium text-[hsl(var(--muted-foreground))]">
+                          Options
+                        </label>
+                        <div className="space-y-2">
+                          {(() => {
+                            const opts = Array.isArray(f.options)
+                              ? f.options
+                              : [];
+                            // Ensure there is one trailing empty input
+                            const rows = [...opts, ""];
+                            return rows.map((val, i) => (
+                              <div
+                                key={i}
+                                className={`flex items-center gap-2 ${
+                                  val ? "" : "opacity-70"
+                                }`}
+                              >
+                                {/* faded control icon */}
+                                <span
+                                  className={`inline-block h-4 w-4 rounded-full border ${
+                                    val
+                                      ? "border-[hsl(var(--foreground))]"
+                                      : "border-[hsl(var(--muted-foreground))]"
+                                  }`}
+                                />
+                                <input
+                                  className="flex-1 rounded-md border border-[hsl(var(--border))] bg-[hsl(var(--input))] px-3 py-1.5 text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))] focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))]"
+                                  placeholder={`Option ${i + 1}`}
+                                  value={val}
+                                  onChange={(e) => {
+                                    const next = [...opts];
+                                    const v = e.target.value;
+                                    if (i < opts.length) {
+                                      next[i] = v;
+                                    } else if (v.trim()) {
+                                      next.push(v);
+                                    }
+                                    // Remove empty options except the trailing one
+                                    const cleaned = next.filter(
+                                      (s) => s.trim() !== ""
+                                    );
+                                    updateField(f.id, { options: cleaned });
+                                  }}
+                                />
+                                {val && (
+                                  <button
+                                    type="button"
+                                    className="btn-ghost text-xs"
+                                    onClick={() => {
+                                      const next = (f.options || []).filter(
+                                        (_, idx) => idx !== i
+                                      );
+                                      updateField(f.id, { options: next });
+                                    }}
+                                  >
+                                    Remove
+                                  </button>
+                                )}
+                              </div>
+                            ));
+                          })()}
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
                   {/* Required toggle (not for sections) */}
                   {!isSection && (
@@ -517,7 +651,9 @@ export const FormBuilder: React.FC<{
                       <div className="inline-flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => updateField(f.id, { required: !f.required })}
+                          onClick={() =>
+                            updateField(f.id, { required: !f.required })
+                          }
                           className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] ${
                             f.required
                               ? "bg-[hsl(var(--primary))] text-[hsl(var(--primary-foreground))] border-transparent"
@@ -530,7 +666,9 @@ export const FormBuilder: React.FC<{
                         </button>
                       </div>
 
-                      <span className="text-xs text-[hsl(var(--muted-foreground))]">Field ID: {f.id}</span>
+                      <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                        Field ID: {f.id}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -543,20 +681,39 @@ export const FormBuilder: React.FC<{
       {/* Add field modal trigger */}
       <div className="rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] shadow-sm p-4 md:p-5">
         <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-[hsl(var(--card-foreground))]">Add field</h3>
-          <button type="button" onClick={() => setShowPicker(true)} className="btn-primary">Open Picker</button>
+          <h3 className="font-semibold text-[hsl(var(--card-foreground))]">
+            Add field
+          </h3>
+          <button
+            type="button"
+            onClick={() => setShowPicker(true)}
+            className="btn-primary"
+          >
+            Open Picker
+          </button>
         </div>
-        <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">Click to choose a field type, or drag from the picker onto the form.</p>
+        <p className="mt-1 text-sm text-[hsl(var(--muted-foreground))]">
+          Click to choose a field type, or drag from the picker onto the form.
+        </p>
       </div>
 
       {/* Picker modal */}
       {showPicker && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowPicker(false)} />
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={() => setShowPicker(false)}
+          />
           <div className="relative z-10 w-full max-w-md rounded-xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-4 shadow-lg">
             <div className="flex items-center justify-between mb-2">
               <h4 className="font-semibold">Choose a field type</h4>
-              <button type="button" className="btn-ghost" onClick={() => setShowPicker(false)}>Close</button>
+              <button
+                type="button"
+                className="btn-ghost"
+                onClick={() => setShowPicker(false)}
+              >
+                Close
+              </button>
             </div>
             <div className="grid grid-cols-1 gap-2">
               {types.map((t) => {
@@ -570,16 +727,31 @@ export const FormBuilder: React.FC<{
                   <button
                     key={t}
                     type="button"
-                    onClick={() => { addField(t); setShowPicker(false); }}
+                    onClick={() => {
+                      addField(t);
+                      setShowPicker(false);
+                    }}
                     draggable
-                    onDragStart={(e) => { e.dataTransfer.setData("text/plain", t); setIsAddingDrag(true); }}
-                    onDragEnd={() => setIsAddingDrag(false)}
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("text/plain", t);
+                      setIsAddingDrag(true);
+                      setIsDraggingNew(true);
+                    }}
+                    onDragEnd={() => {
+                      setIsAddingDrag(false);
+                      setIsDraggingNew(false);
+                      setDropBeforeIndex(null);
+                    }}
                     className={`group flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] px-3 h-12 text-left hover:bg-[hsl(var(--muted))] transition`}
                   >
-                    <span className={`grid h-8 w-8 place-items-center rounded-md ${Meta.badge}`}>
+                    <span
+                      className={`grid h-8 w-8 place-items-center rounded-md ${Meta.badge}`}
+                    >
                       <Icon className="h-5 w-5" />
                     </span>
-                    <span className="text-sm font-medium text-[hsl(var(--foreground))]">{Meta.label}</span>
+                    <span className="text-sm font-medium text-[hsl(var(--foreground))]">
+                      {Meta.label}
+                    </span>
                   </button>
                 );
               })}

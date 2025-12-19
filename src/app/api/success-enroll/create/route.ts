@@ -117,11 +117,10 @@ export async function POST(req: NextRequest) {
     let existingId: number | null = null;
     if (payload.user_id) {
       let q = admin
-        .from('success_enroll')
+        .from('enrollments')
         .select('id')
         .eq('status', 'pending')
-        .eq('user_id', payload.user_id)
-        .eq('type', type);
+        .eq('user_id', payload.user_id);
       
       if (program_id) q = q.eq('program_id', program_id);
       if (skill_id) q = q.eq('skill_id', skill_id);
@@ -132,11 +131,10 @@ export async function POST(req: NextRequest) {
     
     if (!existingId && payload.user_email) {
       let q = admin
-        .from('success_enroll')
+        .from('enrollments')
         .select('id')
         .eq('status', 'pending')
-        .eq('user_email', payload.user_email)
-        .eq('type', type);
+        .eq('user_email', payload.user_email);
 
       if (program_id) q = q.eq('program_id', program_id);
       if (skill_id) q = q.eq('skill_id', skill_id);
@@ -154,9 +152,10 @@ export async function POST(req: NextRequest) {
       if (typeof payload.amount !== 'undefined') {
         updatePayload.amount = payload.amount;
         updatePayload.currency = payload.currency;
+        updatePayload.subscription_type = payload.subscription_type;
       }
       const { error: updErr } = await admin
-        .from('success_enroll')
+        .from('enrollments')
         .update(updatePayload)
         .eq('id', existingId);
       if (updErr) return NextResponse.json({ error: updErr.message }, { status: 500 });
@@ -164,7 +163,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { data, error } = await admin
-      .from('success_enroll')
+      .from('enrollments')
       .insert(payload)
       .select('id')
       .single();

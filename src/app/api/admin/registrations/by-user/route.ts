@@ -42,9 +42,8 @@ export async function GET(req: NextRequest) {
     if (!user_id && !email) return NextResponse.json({ error: 'missing_filter' }, { status: 400 });
 
     let query = admin
-      .from('success_enroll')
-      .select('id,user_id,user_name,user_email,program_id,program_title,form_data,created_at,amount,currency,type,status,transaction_id')
-      .eq('status', 'paid')
+      .from('enrollments')
+      .select('id,user_id,user_name,user_email,program_id,skill_id,form_data,created_at,amount,currency,description,status,checkout_id')
       .order('created_at', { ascending: false });
     if (user_id) query = query.eq('user_id', user_id);
     else if (email) query = query.eq('user_email', email);

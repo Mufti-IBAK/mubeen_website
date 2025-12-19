@@ -1,0 +1,12 @@
+https://mubeen-website.vercel.app/admin/registrations
+this is not being updated properly again... the details of registration both paid and unpaid enrollments are not being loaded properly in the codebase - i want you to firstly find out the algrithm that the system uses to access these data and update the admin dashboard or user interface... generate an sql code that helps us to find out the location of every table that holds the registration details for user, the table that is connected to flutterwave to save verified payments as paid or unpaid and as well the table that collects the program or skill being registered for...
+then i will run this sql in my supabase sql editor and then give you feedback on the location of these tables then we will now use the information to create a unfied single table to handle all these payment, programs and skills registration details and make sure the entire codebase is connected to it.
+
+then looking at the form builder page. it is well seperated and all programs works nicely, but we need to be careful with the skills section - it is not working i tried editing the form and upon saving it said - upsert_failed
+. i think this is a major with the implementation of the skills section, review the entire skill section - everything related to the skills section and make sure that there are working.
+
+the plan config works perfect - i like the "/mo and /yr.. however i want it to be in full for all plans and to prove aclarity - /monthly, /weekly, /yearly, /class and /once... see i added a new type (i.e; /class - where the students pay per class attended.
+
+then in the program/skill edit page... the start date and enrollment deadline date do not appear in the admin edit program or skill page.. it has to show - however it saves and updates fine, it jus doesn't show the admin loads the page
+
+plan the algorithm to implement this - and then execute but remember we need the sql codes first

@@ -16,6 +16,9 @@ export interface Program {
   duration: string;
   is_flagship: boolean;
   price_start?: string;
+  enrollment_deadline?: string;
+  max_slots?: number | null;
+  paid_count?: number;
 }
 
 interface ProgramCardProps {
@@ -53,6 +56,18 @@ export const ProgramCard: React.FC<ProgramCardProps> = ({
 
   const tags = program.tags ?? [];
 
+  const now = new Date();
+  const deadlineAt = program.enrollment_deadline
+    ? new Date(program.enrollment_deadline)
+    : null;
+  const isDeadlinePassed = !!deadlineAt && deadlineAt.getTime() < now.getTime();
+
+  const maxSlots = program.max_slots ?? null;
+  const paidCount = program.paid_count ?? 0;
+  const isFull = maxSlots !== null && paidCount >= maxSlots;
+  const slotsLeft =
+    maxSlots !== null ? Math.max(0, maxSlots - paidCount) : null;
+
   return (
     <div
       ref={card}
@@ -69,11 +84,27 @@ export const ProgramCard: React.FC<ProgramCardProps> = ({
               fill
               className="object-cover transition-transform duration-500 group-hover:scale-105"
             />
-            {program.is_flagship && (
-              <span className="absolute px-2.5 py-1 text-[10px] uppercase tracking-wider font-bold text-white rounded-full top-3 right-3 bg-brand-primary shadow-sm">
-                Flagship
-              </span>
-            )}
+            {/* Badges Container */}
+            <div className="absolute top-2 left-2 flex flex-col gap-1.5 z-10">
+              {program.is_flagship && (
+                <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase bg-brand-primary text-white rounded-lg shadow-sm">
+                  Flagship
+                </span>
+              )}
+              {isDeadlinePassed ? (
+                <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase bg-destructive text-destructive-foreground rounded-lg shadow-sm">
+                  Closed
+                </span>
+              ) : isFull ? (
+                <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase bg-destructive text-destructive-foreground rounded-lg shadow-sm">
+                  Full
+                </span>
+              ) : slotsLeft !== null && slotsLeft <= 5 ? (
+                <span className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase bg-orange-500 text-white rounded-lg shadow-sm animate-pulse">
+                  {slotsLeft} {slotsLeft === 1 ? "Slot" : "Slots"} Left
+                </span>
+              ) : null}
+            </div>
           </div>
           <div className="p-4">
             <h3 className="text-xl font-bold text-brand-dark font-heading line-clamp-2">

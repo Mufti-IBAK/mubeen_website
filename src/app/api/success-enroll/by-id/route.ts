@@ -28,8 +28,8 @@ export async function GET(req: NextRequest) {
 
     const admin = createClient(url, service as string);
     const { data: row, error } = await admin
-      .from('success_enroll')
-      .select('id, user_id, user_email, user_name, program_id, amount, currency, form_data')
+      .from('enrollments')
+      .select('id, user_id, user_email, user_name, program_id, skill_id, amount, currency, form_data')
       .eq('id', id)
       .maybeSingle();
     if (error || !row) return NextResponse.json({ error: 'not_found' }, { status: 404 });
