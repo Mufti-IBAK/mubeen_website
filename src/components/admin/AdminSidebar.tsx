@@ -15,7 +15,7 @@ export const AdminSidebar: React.FC = () => {
     { name: "Pricing Plans", href: "/admin/pricing", icon: FiCreditCard },
     { name: "Assignments", href: "/admin/assignments", icon: FiFileText },
     { name: "Enrollments", href: "/admin/enrollments", icon: FiUsers },
-    { name: "Unpaid", href: "/admin/unpaid_enroll", icon: FiAlertCircle },
+    { name: "Pending", href: "/admin/unpaid_enroll", icon: FiAlertCircle },
     { name: "User Management", href: "/admin/user-management", icon: FiUsers },
     // Public Links
     { name: "Skill Up (Public)", href: "/skill-up", target: "_blank", icon: FiGlobe },

@@ -21,7 +21,7 @@ export default async function PaymentSummary({ searchParams }: { searchParams: P
   let currency = data.currency || 'NGN';
   const program_id = data.program_id ? Number(data.program_id) : undefined;
   const description = data.description || '';
-  const se = data.se || '';
+  const enrollment_id = data.enrollment_id || data.se || '';
 
   // For program payments, fetch authoritative price from program_plans
   if (program_id) {
@@ -119,7 +119,7 @@ export default async function PaymentSummary({ searchParams }: { searchParams: P
           {description ? <input type="hidden" name="description" value={description} /> : null}
           <input type="hidden" name="amount" value={amount} />
           <input type="hidden" name="currency" value={currency} />
-          {se ? <input type="hidden" name="success_enroll_id" value={se} /> : null}
+          {enrollment_id ? <input type="hidden" name="enrollment_id" value={enrollment_id} /> : null}
           <button className="btn-primary">Proceed to Payment</button>
         </form>
       </div>

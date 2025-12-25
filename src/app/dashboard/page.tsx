@@ -106,95 +106,70 @@ export default function DashboardPage() {
       .eq("id", user.id)
       .single();
     setProfile((p as any) || null);
-    // load enrollments
+    // load enrollments (The single source of truth for all registrations)
     const { data: enr } = await supabase
       .from("enrollments")
       .select(
-        "id, program_id, status, payment_status, created_at, duration_months, classroom_link, plan_id, defer_active, is_draft"
+        "id, program_id, skill_id, program_title, status, payment_status, created_at, duration_months, classroom_link, plan_id, defer_active, is_draft, type, amount, currency"
       )
       .eq("user_id", user.id)
       .eq("is_draft", false)
       .order("created_at", { ascending: false });
-    const list = (enr as Enrollment[]) || [];
+    
+    const list = (enr as any[]) || [];
     setEnrollments(list);
-    const ids = Array.from(new Set(list.map((e) => e.program_id)));
+
+    // Populate seCount and seLatest from the unified list
+    setSeCount(list.length);
+    setSeLatest(
+      list.slice(0, 3).map((r) => ({
+        id: r.id,
+        program_id: r.program_id,
+        skill_id: r.skill_id,
+        program_title: r.program_title,
+        created_at: r.created_at,
+        type: r.type,
+      }))
+    );
+
+    // Populate unpaid from the unified list
+    const unpaidList = list.filter(r => r.payment_status === 'unpaid' && r.status !== 'cancelled');
+    setUnpaid(
+      unpaidList.map((r) => ({
+        id: r.id,
+        se_id: r.id, // Using enrollment ID as the handle
+        program_id: r.program_id,
+        skill_id: r.skill_id,
+        program_title: r.program_title,
+        created_at: r.created_at,
+        category: (r.form_data as any)?.category || 
+                  ((r.form_data as any)?.family_size ? `family_${(r.form_data as any).family_size}` : "individual"),
+        type: r.type,
+      }))
+    );
+
+    // Map programs for titles (if cached title is missing)
+    const ids = Array.from(new Set(list.map((e) => e.program_id).filter(id => id)));
     if (ids.length) {
       const { data: progs } = await supabase
         .from("programs")
         .select("id, title, slug")
         .in("id", ids);
-      const map: Record<number, { id: number; title: string; slug?: string }> =
-        {};
+      const map: Record<number, { id: number; title: string; slug?: string }> = {};
       (progs as any[] | null)?.forEach((pr) => {
         map[pr.id] = pr;
       });
       setProgramsMap(map);
     }
-    // Load success_enroll summary for this user (count and latest 3)
-    const { data: se } = await supabase
-      .from("success_enroll")
-      .select(
-        "id, program_id, skill_id, program_title, created_at, user_email, type"
-      )
-      .or(`user_id.eq.${user.id},user_email.eq.${user.email ?? ""}`)
-      .order("created_at", { ascending: false });
-    const rows = (se as Array<any>) || [];
-    setSeCount(rows.length);
-    setSeLatest(
-      rows
-        .slice(0, 3)
-        .map((r) => ({
-          id: r.id,
-          program_id: r.program_id,
-          skill_id: r.skill_id,
-          program_title: r.program_title,
-          created_at: r.created_at,
-          type: r.type,
-        }))
-    );
 
-    // Load unpaid enrollments from success_enroll (status=pending)
-    const { data: ueRows } = await supabase
-      .from("success_enroll")
-      .select(
-        "id, program_id, skill_id, program_title, created_at, user_email, form_data, category, status, type"
-      )
-      .eq("status", "pending")
-      .or(`user_id.eq.${user.id},user_email.eq.${user.email ?? ""}`)
-      .order("created_at", { ascending: false });
-    setUnpaid(
-      ((ueRows as any[]) || []).map((r) => ({
-        id: r.id,
-        se_id: r.id,
-        program_id: r.program_id,
-        skill_id: r.skill_id,
-        program_title: r.program_title,
-        created_at: r.created_at,
-        category:
-          r.category ||
-          (r as any).form_data?.category ||
-          ((r as any).form_data?.family_size
-            ? `family_${(r as any).form_data?.family_size}`
-            : "individual"),
-        type: r.type,
-      }))
-    );
-
-    // Fetch skills if present
-    const sids = new Set<number>();
-    rows.forEach((r) => {
-      if (r.skill_id) sids.add(r.skill_id);
-    });
-    ((ueRows as any[]) || []).forEach((r) => {
-      if (r.skill_id) sids.add(r.skill_id);
-    });
-    if (sids.size > 0) {
+    // Map skills for titles
+    const sids = Array.from(new Set(list.map(r => r.skill_id).filter(id => id)));
+    if (sids.length) {
       const { data: sk } = await supabase
         .from("skills")
         .select("id, title, slug")
-        .in("id", Array.from(sids));
-      const sm: Record<number, { id: number; title: string; slug?: string }> =
-        {};
+        .in("id", sids);
+      const sm: Record<number, { id: number; title: string; slug?: string }> = {};
       ((sk as any[]) || []).forEach((s) => {
         sm[s.id] = s;
       });
@@ -557,7 +532,7 @@ export default function DashboardPage() {
                             u.program_id
                               ? `program=${u.program_id}`
                               : `skill=${u.skill_id}`
-                          }${u.se_id ? `&se=${u.se_id}` : ""}`}
+                          }${u.se_id ? `&enrollment_id=${u.se_id}` : ""}`}
                           className="btn-primary"
                           aria-label={`Pay now for ${
                             u.program_id
@@ -577,7 +552,7 @@ export default function DashboardPage() {
                             setDeletingId(u.se_id);
                             try {
                               const res = await fetch(
-                                `/api/success-enroll/${u.se_id}/delete`,
+                                `/api/admin/unpaid-enroll/${u.se_id}/delete`,
                                 { method: "DELETE" }
                               );
                               if (res.ok) {

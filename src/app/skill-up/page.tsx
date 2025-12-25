@@ -49,7 +49,14 @@ async function ProgramsPage(): Promise<React.JSX.Element> {
     });
 
     programs = ((data || []) as any[]).map(s => {
-       const period = subMap[s.id] === 'one-time' ? '' : `/${subMap[s.id] === 'monthly' ? 'mo' : (subMap[s.id] === 'yearly' ? 'yr' : 'wk')}`;
+       // Map subscription types to display format
+       let period = '';
+       const subType = subMap[s.id];
+       if (subType === 'monthly') period = '/mo';
+       else if (subType === 'yearly') period = '/yr';
+       else if (subType === 'weekly') period = '/wk';
+       else if (subType === 'one-time' || subType === 'onetime') period = '/once';
+       
        return {
          ...s,
          paid_count: enrollCountMap[s.id] || 0,

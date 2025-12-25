@@ -139,7 +139,15 @@ export async function POST(req: NextRequest) {
         });
         if (!updateRes.ok) {
           const t = await updateRes.text();
-          return NextResponse.json({ error: 'upsert_failed', details: t }, { status: 500 });
+          console.error('Form update failed:', {
+            status: updateRes.status,
+            statusText: updateRes.statusText,
+            response: t,
+            scope,
+            id,
+            form_type
+          });
+          return NextResponse.json({ error: 'upsert_failed', details: t, context: 'update' }, { status: 500 });
         }
         return NextResponse.json({ ok: true });
       }
@@ -162,11 +170,30 @@ export async function POST(req: NextRequest) {
     });
     if (!insertRes.ok) {
       const t = await insertRes.text();
-      return NextResponse.json({ error: 'upsert_failed', details: t }, { status: 500 });
+      console.error('Form insert failed:', {
+        status: insertRes.status,
+        statusText: insertRes.statusText,
+        response: t,
+        scope,
+        id,
+        form_type,
+        onConflict,
+        payload
+      });
+      return NextResponse.json({ error: 'upsert_failed', details: t, context: 'insert' }, { status: 500 });
     }
     return NextResponse.json({ ok: true });
   } catch (err: any) {
-    return NextResponse.json({ error: err?.message || 'server_error' }, { status: 500 });
+    console.error('Form upsert error:', err);
+    console.error('Error details:', {
+      message: err?.message,
+      stack: err?.stack,
+      name: err?.name
+    });
+    return NextResponse.json({ 
+      error: err?.message || 'server_error',
+      details: err?.toString()
+    }, { status: 500 });
   }
 }
 

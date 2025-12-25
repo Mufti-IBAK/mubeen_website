@@ -43,7 +43,7 @@ async function ProgramsPage(): Promise<React.JSX.Element> {
     const { data: enrollmentCounts } = await supabase
       .from("enrollments")
       .select("program_id")
-      .or('status.eq.paid,status.eq.registered');
+      .or("status.eq.paid,status.eq.registered");
 
     const enrollCountMap: Record<number, number> = {};
     (enrollmentCounts || []).forEach((e: any) => {
@@ -52,13 +52,23 @@ async function ProgramsPage(): Promise<React.JSX.Element> {
       }
     });
 
-    programs = ((data || []) as Program[]).map(p => {
-       const period = subMap[p.id] === 'one-time' ? '' : `/${subMap[p.id] === 'monthly' ? 'mo' : (subMap[p.id] === 'yearly' ? 'yr' : 'wk')}`;
-       return {
-         ...p,
-         paid_count: enrollCountMap[p.id] || 0,
-         price_start: plansMap[p.id] ? `${currencyMap[p.id]} ${plansMap[p.id].toLocaleString()}${period}` : undefined
-       };
+    programs = ((data || []) as Program[]).map((p) => {
+      // Map subscription types to display format
+      let period = "";
+      const subType = subMap[p.id];
+      if (subType === "monthly") period = "/mo";
+      else if (subType === "yearly") period = "/yr";
+      else if (subType === "weekly") period = "/wk";
+      else if (subType === "one-time" || subType === "onetime")
+        period = "/once";
+
+      return {
+        ...p,
+        paid_count: enrollCountMap[p.id] || 0,
+        price_start: plansMap[p.id]
+          ? `${currencyMap[p.id]} ${plansMap[p.id].toLocaleString()}${period}`
+          : undefined,
+      };
     });
   } catch (error: any) {
     fetchError = true;

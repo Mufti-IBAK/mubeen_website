@@ -62,7 +62,7 @@ export default function RegistrationFormClient({
       setMessage("");
       const { data: s } = await supabase.auth.getSession();
       const token = s.session?.access_token;
-      const res = await fetch("/api/success-enroll/create", {
+      const res = await fetch("/api/enrollment/create", {
         method: "POST",
         headers: {
           "content-type": "application/json",
@@ -109,7 +109,7 @@ export default function RegistrationFormClient({
                 Back
               </a>
               <a
-                href={`/payment?program=${program.id}&se=${savedId}`}
+                href={`/payment?program=${program.id}&enrollment_id=${savedId}`}
                 className="btn-primary"
               >
                 Proceed to Payment

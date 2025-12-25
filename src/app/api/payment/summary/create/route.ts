@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       currency: String(body.currency || 'NGN'),
       program_id: body.program_id ? Number(body.program_id) : undefined,
       description: body.description ? String(body.description) : undefined,
-      se: body.se ? String(body.se) : undefined,
+      enrollment_id: body.enrollment_id || body.se ? String(body.enrollment_id || body.se) : undefined,
       ts: Date.now(),
     };
     const secret = getSigningSecret();

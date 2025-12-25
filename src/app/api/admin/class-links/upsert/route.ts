@@ -100,8 +100,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, deleted: true });
     }
 
-    // Get enrollment details (user_id and program_id) from success_enroll
-    const enrollRes = await fetch(`${supabaseUrl}/rest/v1/success_enroll?id=eq.${enrollment_id}&select=user_id,program_id`, {
+    // Get enrollment details (user_id and program_id) from enrollments table
+    const enrollRes = await fetch(`${supabaseUrl}/rest/v1/enrollments?id=eq.${enrollment_id}&select=user_id,program_id`, {
       headers: {
         apikey: service as string,
         Authorization: `Bearer ${service}`,

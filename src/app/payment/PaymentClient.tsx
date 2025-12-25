@@ -87,19 +87,19 @@ export default function PaymentClient() {
             : new URLSearchParams();
         const preProgram = params.get("program") || params.get("program_id");
         const preSkill = params.get("skill") || params.get("skill_id");
-        const se = params.get("se");
+        const se = params.get("se") || params.get("enrollment_id");
 
         if (se) {
-          // Securely fetch success_enroll and lock fields
+          // Securely fetch enrollment and lock fields
           const res = await fetch(
-            `/api/success-enroll/by-id?id=${encodeURIComponent(se)}`,
+            `/api/enrollment/by-id?id=${encodeURIComponent(se)}`,
             { cache: "no-store" }
           );
           const seRow = res.ok ? await res.json().catch(() => null) : null;
           if (seRow) {
-            const seId = Number(se);
-            setLockedSe(seId);
-            setSelectedSeId(seId);
+            const enrollment_id = Number(se);
+            setLockedSe(enrollment_id);
+            setSelectedSeId(enrollment_id);
 
             // Derive amount from individual plan
             let amount = seRow.amount as number | null;

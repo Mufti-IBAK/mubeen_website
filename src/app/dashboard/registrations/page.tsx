@@ -56,6 +56,8 @@ export default function DashboardRegistrationsPage() {
       created_at: string;
       type: string;
       status: string;
+      payment_status?: string | null;
+      description?: string | null;
       category?: string | null;
       subscription_type?: string | null;
       expires_at?: string | null;
@@ -89,12 +91,7 @@ export default function DashboardRegistrationsPage() {
       .order("created_at", { ascending: false });
 
     const list = (enr as any[]) || [];
-    setSuccessPayments(
-      list.map((r) => ({
-        ...r,
-        program_title: r.description, // Use description as fallback title if needed
-      }))
-    );
+    setSuccessPayments(list);
 
     const pids = Array.from(
       new Set(list.map((e) => e.program_id).filter(Boolean))
@@ -130,7 +127,9 @@ export default function DashboardRegistrationsPage() {
     }
 
     // Fetch classroom links for paid enrollments
-    const paidIds = list.filter((r) => r.status === "paid").map((r) => r.id);
+    const paidIds = list
+      .filter((r) => r.payment_status === "paid" || r.status === "active")
+      .map((r) => r.id);
     if (paidIds.length > 0) {
       const { data: linksData } = await supabase
         .from("class_links")
@@ -228,7 +227,6 @@ export default function DashboardRegistrationsPage() {
           </div>
         ) : (
           <div className="space-y-8">
-
             {/* My Enrollments from success_enroll */}
             {successPayments.length > 0 && (
               <section aria-labelledby="my-enrollments-heading">
@@ -256,12 +254,18 @@ export default function DashboardRegistrationsPage() {
                         </h3>
                         <span
                           className={`badge text-xs ${
-                            r.status === "paid"
+                            r.payment_status === "paid" ||
+                            r.status === "paid" ||
+                            r.status === "active"
                               ? "bg-green-100 text-green-700"
                               : "bg-amber-100 text-amber-700"
                           }`}
                         >
-                          {r.status === "paid" ? "Paid" : "Pending Payment"}
+                          {r.payment_status === "paid" ||
+                          r.status === "paid" ||
+                          r.status === "active"
+                            ? "Paid"
+                            : "Pending Payment"}
                         </span>
                       </div>
                       <div className="text-sm">
@@ -293,48 +297,57 @@ export default function DashboardRegistrationsPage() {
                         </p>
                         {r.expires_at && (
                           <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-rose-600 bg-rose-50 px-2 py-0.5 rounded-full inline-block">
-                            Expires: {new Date(r.expires_at).toLocaleDateString()}
+                            Expires:{" "}
+                            {new Date(r.expires_at).toLocaleDateString()}
                           </p>
                         )}
                       </div>
 
                       {/* Actions */}
                       <div className="flex flex-wrap gap-2 mt-2">
-                        {r.status === "pending" && (
+                        {(r.status === "pending" ||
+                          r.payment_status === "unpaid") && (
                           <a
                             href={`/payment?${
                               r.skill_id
                                 ? `skill=${r.skill_id}`
                                 : `program=${r.program_id}`
-                            }${r.id ? `&se=${r.id}` : ""}`}
+                            }${r.id ? `&enrollment_id=${r.id}` : ""}`}
                             className="btn-primary flex-1 text-center"
                           >
                             Pay Now
                           </a>
                         )}
                         {/* Renew Button (for non-one-time, paid subscriptions) */}
-                        {r.status === "paid" && r.subscription_type && r.subscription_type !== 'once' && (
-                          <Link
-                            href={`/dashboard/renew/${r.id}`}
-                            className="btn-outline flex-1 text-center py-2"
-                          >
-                            Renew
-                          </Link>
-                        )}
+                        {(r.payment_status === "paid" ||
+                          r.status === "paid" ||
+                          r.status === "active") &&
+                          r.subscription_type &&
+                          r.subscription_type !== "once" && (
+                            <Link
+                              href={`/dashboard/renew/${r.id}`}
+                              className="btn-outline flex-1 text-center py-2"
+                            >
+                              Renew
+                            </Link>
+                          )}
                         {/* Join Classroom Button (only if paid) */}
-                        {r.status === "paid" && classLinks[r.id] && (
-                          <a
-                            href={ensureAbsoluteUrl(classLinks[r.id])}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn-primary flex-1 text-center"
-                            aria-label={`Join classroom for ${
-                              r.program_title || r.type
-                            }`}
-                          >
-                            Join Classroom
-                          </a>
-                        )}
+                        {(r.payment_status === "paid" ||
+                          r.status === "paid" ||
+                          r.status === "active") &&
+                          classLinks[r.id] && (
+                            <a
+                              href={ensureAbsoluteUrl(classLinks[r.id])}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn-primary flex-1 text-center"
+                              aria-label={`Join classroom for ${
+                                r.program_title || r.description || r.type
+                              }`}
+                            >
+                              Join Classroom
+                            </a>
+                          )}
                       </div>
                     </article>
                   ))}
