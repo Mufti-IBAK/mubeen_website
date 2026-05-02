@@ -7,6 +7,8 @@ import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import { FiUser, FiClipboard, FiSend, FiMoon } from "react-icons/fi";
 import { useRouter } from "next/navigation";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { ensureAbsoluteUrl } from "@/lib/utils";
 
 type Enrollment = {
   id: number;
@@ -200,18 +202,24 @@ export default function DashboardPage() {
   // progress removed
 
   // Normalize external links to avoid localhost prefixing
-  const ensureAbsoluteUrl = (url: string) => {
-    if (!url) return "";
-    if (/^https?:\/\//i.test(url) || /^mailto:/i.test(url)) return url;
-    return `https://${url}`;
-  };
 
   if (loading) {
     return (
-      <div className="bg-[hsl(var(--background))] min-h-screen flex items-center justify-center">
-        <p className="text-[hsl(var(--muted-foreground))]">
-          Loading dashboard...
-        </p>
+      <div className="bg-[hsl(var(--background))] min-h-screen px-6 py-24">
+        <div className="max-w-7xl mx-auto">
+          <Skeleton className="h-10 w-64 mb-8" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="space-y-6">
+              <Skeleton className="h-48 rounded-2xl" />
+              <Skeleton className="h-40 rounded-2xl" />
+              <Skeleton className="h-32 rounded-2xl" />
+            </div>
+            <div className="lg:col-span-2 space-y-8">
+              <Skeleton className="h-56 rounded-2xl" />
+              <Skeleton className="h-72 rounded-2xl" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

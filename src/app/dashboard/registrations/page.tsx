@@ -4,6 +4,9 @@ import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Skeleton } from "@/components/ui/Skeleton";
+import { useToast } from "@/components/ui/use-toast";
+import { ensureAbsoluteUrl } from "@/lib/utils";
 
 declare const FlutterwaveCheckout: any;
 
@@ -44,6 +47,7 @@ type Plan = { id: number; price: number; currency: string };
 
 export default function DashboardRegistrationsPage() {
   const router = useRouter();
+  const { toast } = useToast();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [successPayments, setSuccessPayments] = useState<
     Array<{
@@ -168,12 +172,24 @@ export default function DashboardRegistrationsPage() {
     const plan = (e.plan_id && plans[e.plan_id]) || null;
     const price = e.amount ?? plan?.price ?? 0;
     const currency = e.currency || plan?.currency || "NGN";
-    if (!price) return alert("No price available for this enrollment.");
+    if (!price) {
+      return toast({
+        title: "Payment error",
+        description: "No price available for this enrollment.",
+        variant: "destructive",
+      });
+    }
 
     // Get current user email for customer info
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
-    if (!user?.email) return alert("Please log in to continue with payment.");
+    if (!user?.email) {
+      return toast({
+        title: "Authentication required",
+        description: "Please log in to continue with payment.",
+        variant: "destructive",
+      });
+    }
 
     try {
       FlutterwaveCheckout({
@@ -193,15 +209,14 @@ export default function DashboardRegistrationsPage() {
         },
       });
     } catch {
-      alert("Unable to initiate payment");
+      toast({
+        title: "Payment error",
+        description: "Unable to initiate payment. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
-  const ensureAbsoluteUrl = (url: string) => {
-    if (!url) return "";
-    if (/^https?:\/\//i.test(url) || /^mailto:/i.test(url)) return url;
-    return `https://${url}`;
-  };
 
   return (
     <div className="min-h-screen bg-[hsl(var(--background))] px-6 py-24">
@@ -220,10 +235,18 @@ export default function DashboardRegistrationsPage() {
         </div>
 
         {loading ? (
-          <div className="card">
-            <div className="card-body text-center text-[hsl(var(--muted-foreground))]">
-              Loading…
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="card p-6 space-y-4">
+                <Skeleton className="h-6 w-3/4" />
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-20 w-full rounded-xl" />
+                <div className="flex gap-2">
+                  <Skeleton className="h-10 w-full" />
+                  <Skeleton className="h-10 w-full" />
+                </div>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="space-y-8">
