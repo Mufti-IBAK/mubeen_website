@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { finalizePayment, constructRichMeta } from "@/lib/payment-utils";
 
 function reqEnv(name: string) {
   const v = process.env[name];
@@ -186,55 +187,29 @@ export async function GET(req: NextRequest) {
         { status: 400 }
       );
 
-    // Update row as paid/active
-    // Construct Rich Metadata
-    const richMeta = {
-      bank_name: data.card?.issuer || data.account?.bank_name || "N/A",
-      originator_name:
-        data.customer?.name || data.meta?.originatorname || "N/A",
-      payment_type: data.payment_type || "N/A",
-      ip_address: data.ip_address || "N/A",
-      created_at: data.created_at, // Payment Started
-      paid_at: data.created_at, // Payment Completed (using created_at as FLW often syncs them or verifies instantly)
-      flw_ref: data.flw_ref,
-      narration: data.narration,
-    };
+    // Construct Rich Metadata via shared helper
+    const richMeta = constructRichMeta(data);
 
     // Update row as paid/active with Rich Data
-    // We try to update payment_meta. If it fails (migration not run), we fallback to simple update.
-    let updatePayload: any = {
-      status: "active",
-      payment_status: "paid",
+    const { ok: finalOk, error: finalErr } = await finalizePayment(admin, {
+      enrollmentId,
       amount,
       currency,
-      transaction_id: String(data.id),
-    };
+      transactionId: String(data.id),
+      flwRef: data.flw_ref,
+      txRef: data.tx_ref,
+      richMeta
+    });
 
-    // Try to include new columns. If this throws due to missing column, we'll retry without them.
-    // Actually, supabase-js might throw validation error before sending? No, usually SQL error.
-    // For safety, let's just perform the update. Use a separate call for meta if paranoid, but one call is atomic.
-    // Let's assume user WILL run migration. But to prevent 500s right now:
-    // Update with rich metadata
-    const payloadWithMeta = {
-      ...updatePayload,
-      payment_meta: richMeta,
-      flw_ref: data.flw_ref,
-    };
-    
-    const { error: updateErr } = await admin
-      .from("enrollments")
-      .update(payloadWithMeta)
-      .eq("id", enrollmentId);
-    
-    if (updateErr) {
-      console.error("Payment status update failed:", updateErr);
+    if (!finalOk) {
+      console.error("Payment finalization failed:", finalErr);
       return NextResponse.json(
-        { ok: false, error: "update_failed", details: updateErr.message },
+        { ok: false, error: "update_failed", details: finalErr },
         { status: 500 }
       );
     }
 
-    console.log(`✅ Enrollment #${enrollmentId} verified and updated to PAID`);
+    console.log(`✅ Enrollment #${enrollmentId} verified and updated to PAID via shared utility`);
     return NextResponse.json({ 
       ok: true, 
       status: "paid", 

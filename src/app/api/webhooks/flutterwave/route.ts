@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { finalizePayment, constructRichMeta } from "@/lib/payment-utils";
 
 function env(name: string) {
   const v = process.env[name];
@@ -24,7 +25,7 @@ export async function POST(req: NextRequest) {
     const amount = Number(data?.amount || 0);
     const currency = String(data?.currency || "NGN");
 
-    const m = /^(?:se|er)-(\d+)(?:-|$)/.exec(tx_ref || "");
+    const m = /^(?:se|er|draft|renew)-(\d+)(?:-|$)/.exec(tx_ref || "");
     if (!m)
       return NextResponse.json(
         { ok: false, error: "invalid_ref" },
@@ -55,66 +56,29 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
 
-    // Strict price check against program plan
-    let priceOk = true;
-    if ((row as any).program_id) {
-      const pid = (row as any).program_id as number;
-      const { data: plan } = await admin
-        .from("program_plans")
-        .select("price,currency")
-        .eq("program_id", pid)
-        .eq("plan_type", "individual")
-        .is("family_size", null)
-        .maybeSingle();
-      if (plan) {
-        const expected = Number((plan as any).price || 0);
-        const ec = (plan as any).currency || "NGN";
-        priceOk = expected > 0 && amount === expected && currency === ec;
-      }
-    }
-    if (!priceOk)
-      return NextResponse.json(
-        { ok: false, error: "amount_mismatch" },
-        { status: 400 }
-      );
+    // Construct Rich Metadata via shared helper
+    const richMeta = constructRichMeta(data);
 
-    // Extract rich metadata from webhook payload
-    const richMeta = {
-      bank_name: data.meta?.bankname || data.account?.bank_name || 'N/A',
-      originator_name: data.meta?.originatorname || data.customer?.name || 'N/A',
-      payment_type: data.payment_type || 'N/A',
-      ip_address: data.ip || 'N/A',
-      created_at: data.created_at,
-      paid_at: data.created_at,
-      flw_ref: data.flw_ref,
-      narration: data.narration || 'Mubeen Academy',
-      originator_account: data.meta?.originatoraccountnumber || 'N/A'
-    };
+    // Update row via shared utility
+    const { ok: finalOk, error: finalErr } = await finalizePayment(admin, {
+      enrollmentId,
+      amount,
+      currency,
+      transactionId: String(id),
+      flwRef: data.flw_ref,
+      txRef: tx_ref,
+      richMeta
+    });
 
-    const { error: updErr } = await admin
-      .from("enrollments")
-      .update({
-        status: "active",
-        payment_status: "paid",
-        tx_ref: tx_ref,  // CRITICAL: Save the transaction reference
-        transaction_id: String(id),
-        flw_ref: data.flw_ref,  // CRITICAL: Save Flutterwave reference
-        amount,
-        currency,
-        payment_meta: richMeta,  // CRITICAL: Save rich metadata
-        updated_at: new Date().toISOString()
-      })
-      .eq("id", enrollmentId);
-    
-    if (updErr) {
-      console.error("Webhook update error:", updErr);
+    if (!finalOk) {
+      console.error("Webhook update error:", finalErr);
       return NextResponse.json(
-        { ok: false, error: updErr.message },
+        { ok: false, error: finalErr },
         { status: 500 }
       );
     }
 
-    console.log(`✅ Webhook: Enrollment #${enrollmentId} verified and updated`);
+    console.log(`✅ Webhook: Enrollment #${enrollmentId} verified and updated via shared utility`);
     return NextResponse.json({ ok: true, status: "paid", id: enrollmentId });
   } catch (e: any) {
     return NextResponse.json(

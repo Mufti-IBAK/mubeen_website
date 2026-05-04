@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { cookies } from "next/headers";
+import { finalizePayment, constructRichMeta } from "@/lib/payment-utils";
 
 function getEnv(name: string) {
   const v = process.env[name];
@@ -82,37 +83,23 @@ export async function POST(req: NextRequest) {
           continue;
         }
 
-        // Extract rich metadata
-        const richMeta = {
-          bank_name: data.meta?.bankname || data.account?.bank_name || 'N/A',
-          originator_name: data.meta?.originatorname || data.customer?.name || 'N/A',
-          payment_type: data.payment_type || 'N/A',
-          ip_address: data.ip || 'N/A',
-          created_at: data.created_at,
-          paid_at: data.created_at,
-          flw_ref: data.flw_ref,
-          narration: data.narration || 'Mubeen Academy',
-          originator_account: data.meta?.originatoraccountnumber || 'N/A'
-        };
+        // Extract rich metadata via shared helper
+        const richMeta = constructRichMeta(data);
 
-        // Update enrollment
-        const { error: updateErr } = await admin
-          .from('enrollments')
-          .update({
-            status: 'active',
-            payment_status: 'paid',
-            amount: Number(data.amount),
-            currency: data.currency,
-            transaction_id: String(data.id),
-            flw_ref: data.flw_ref,
-            payment_meta: richMeta,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', enrollment.id);
+        // Update enrollment via shared utility
+        const { ok: finalOk, error: finalErr } = await finalizePayment(admin, {
+          enrollmentId: enrollment.id,
+          amount: Number(data.amount),
+          currency: data.currency,
+          transactionId: String(data.id),
+          flwRef: data.flw_ref,
+          txRef: enrollment.tx_ref,
+          richMeta
+        });
 
-        if (updateErr) {
+        if (!finalOk) {
           failed++;
-          errors.push({ id: enrollment.id, error: updateErr.message });
+          errors.push({ id: enrollment.id, error: finalErr });
         } else {
           verified++;
           verifiedEnrollments.push({
